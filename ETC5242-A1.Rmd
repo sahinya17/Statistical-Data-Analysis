@@ -1,0 +1,11 @@
+---
+title: "ETC5242Assignment"
+author: "Sahinya Akila"
+date: "9/4/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
