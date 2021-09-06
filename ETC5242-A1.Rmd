@@ -53,15 +53,4 @@ company_km_model %>%
   facet_wrap(~company_size)
 ```
 
-```{r}
-survfit(Surv(months_active, churned) ~ 1, data = churn_dat)
-
-meadian_churn_time <- median(km_survive$time)
-```
-
-```{r}
-company_km_model %>% group_by(company_size) %>% 
-  summarise(time = median(time))
-```
-
 
