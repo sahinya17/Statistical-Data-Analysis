@@ -53,132 +53,35 @@ company_km_model %>%
   facet_wrap(~company_size)
 ```
 
-Q2
 
-- Compute the Kaplan-Meir curve and use this to estimate the median churn time
-
-```{r}
-library(survival)
-fit <- survfit(Surv(months_active, churned) ~ 1, data = churn_dat)
-event_times <- fit$time
-kaplan_meier <- fit$surv
-```
-
-```{r}
-median(Surv(churn_dat$months_active, churn_dat$churned))
-```
-
-```{r}
-sd(Surv(churn_dat$months_active, churn_dat$churned))
-```
-Use a non-parametric bootstrap to construct 90% confidence intervals for the median of each company size
-
-```{r}
-summary(fit)
-```
-
-```{r}
-y = rlnorm(nrow(churn_dat), mean = mean(churn_dat$months_active), sd = sd(churn_dat$months_active))
-bootstrap <- tibble(experiment = rep(1:10000, each = 100),
-ind = sample(1:100, size = 100*10000, replace = TRUE),
-ystar = y[ind])
-bias <- bootstrap %>%
-group_by(experiment) %>%
-summarise(delta = median(y) - median(ystar))
-median(y) + quantile(bias$delta, c(0.05, 0.95)) 
-```
-
-
-```{r}
-companysize <- c("self-employed", "1-10", "10-50", "50-100", "100-250")
-comp_boot <- function(companysize) { 
-  comp_data <- churn_dat %>% 
-    filter(company_size == companysize) 
-y = rlnorm(nrow(comp_data), mean = mean(comp_data$months_active), sd = sd(comp_data$months_active)) 
-bootstrap <- tibble(experiment = rep(1:10000, each = 100),
-ind = sample(1:100, size = 100*10000, replace = TRUE),
-ystar = y[ind])
-bias <- bootstrap %>%
-group_by(experiment) %>%
-summarise(delta = median(y) - median(ystar))
-median(y) + quantile(bias$delta, c(0.05, 0.95), na.rm = TRUE) 
-  
-}
-a2 = map(companysize, comp_boot)
-a2
-```
-
-
-Make a plot that shows that estimate of the median and the corresponding confidence interval on the
-same axes
-
-```{r}
-fit1 <- survfit(Surv(months_active, churned) ~ company_size, data = churn_dat)
-event_times <- fit$time 
-kaplan_meier <- fit$surv 
-
-summary(fit1)
-
-```
-
-```{r}
-library(survminer)
-library(ggplot2)
-ggsurvplot(fit1, conf.int = TRUE) 
-```
 # Q2
 
-```{r}
-q2_df <- churn_dat %>% 
-  select(company_size,
-         months_active,
-         churned)
-
-```
-
-For each company size (as measured in the company_size column):
 
 - Compute the Kaplan-Meir curve and use this to estimate the median churn time.
 
 ```{r}
-q2_fit <- survfit(Surv(months_active, churned) ~ company_size,
-                  data = q2_df)
+fit <- survfit(Surv(months_active, churned) ~ company_size,
+                  data = churn_dat)
 
-q2_km1 <- ggsurvplot(q2_fit,
-                    conf.int = FALSE)
+g2 <- ggsurvplot(fit,conf.int = FALSE)
 
-q2_km1$plot +
-  theme_bw() +
+g2$plot +
   labs(x = "Months Active",
-       title = "Kaplan-Meir curve for each company size in one plot") +
-  theme(legend.position="bottom") +
-  guides(color = guide_legend(nrow = 2, byrow = TRUE))
+       title = "Kaplan-Meir curve for each company size") +
+  theme(legend.position="bottom") 
 ```
 
-```{r}
-q2_km <- ggsurvplot(q2_fit,
-                    conf.int = TRUE)
-q2_km$plot +
-  theme_bw() +
-  facet_wrap(~company_size) +
-  labs(x = "Months Active",
-       title = "Kaplan-Meir curve for each company size with confidence interval") +
-  theme(legend.position="bottom") +
-  guides(color = guide_legend(nrow = 2, byrow = TRUE))
-```
-
-The estimated median churn time based on Kaplan-Meir curve is calculated by using the value where fit$surv is closest to 0.5, since this method is slightly more reliable and the dataset is relatively large. 
+We calculate the estimated median churn time based where fit$surv is closest to 0.5.
 
 ```{r}
-near_median <- function(fit){
-  if (length(fit$n) > 1) {
-    stop("This only works for a single survival curve!")
-  }
-  index <- which.min(abs(fit$surv - 0.5))
-  return(fit$time[index])
+near_median <- function(x){
+  index <- which.min(log(abs(fit$surv - 0.5)))
+  median <- fit$time[index]
+  return(median)
 }
 ```
 
+-----
 
 ```{r}
 size1 <- q2_df %>% 
