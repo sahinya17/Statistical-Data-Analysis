@@ -78,7 +78,7 @@ summary(fit)
 ```
 
 ```{r}
-y = rnorm(nrow(churn_dat), mean = mean(churn_dat$months_active), sd = sd(churn_dat$months_active))
+y = rlnorm(nrow(churn_dat), mean = mean(churn_dat$months_active), sd = sd(churn_dat$months_active))
 bootstrap <- tibble(experiment = rep(1:10000, each = 100),
 ind = sample(1:100, size = 100*10000, replace = TRUE),
 ystar = y[ind])
@@ -94,7 +94,7 @@ companysize <- c("self-employed", "1-10", "10-50", "50-100", "100-250")
 comp_boot <- function(companysize) { 
   comp_data <- churn_dat %>% 
     filter(company_size == companysize) 
-y = rnorm(nrow(comp_data), mean = mean(comp_data$months_active), sd = sd(comp_data$months_active)) 
+y = rlnorm(nrow(comp_data), mean = mean(comp_data$months_active), sd = sd(comp_data$months_active)) 
 bootstrap <- tibble(experiment = rep(1:10000, each = 100),
 ind = sample(1:100, size = 100*10000, replace = TRUE),
 ystar = y[ind])
@@ -124,6 +124,6 @@ summary(fit1)
 ```{r}
 library(survminer)
 library(ggplot2)
-ggsurvplot(fit1, conf.int = TRUE, pval = TRUE) 
+ggsurvplot(fit1, conf.int = TRUE) 
 ```
 
