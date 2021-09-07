@@ -126,4 +126,175 @@ library(survminer)
 library(ggplot2)
 ggsurvplot(fit1, conf.int = TRUE) 
 ```
+# Q2
+
+```{r}
+q2_df <- churn_dat %>% 
+  select(company_size,
+         months_active,
+         churned)
+
+```
+
+For each company size (as measured in the company_size column):
+
+- Compute the Kaplan-Meir curve and use this to estimate the median churn time.
+
+```{r}
+q2_fit <- survfit(Surv(months_active, churned) ~ company_size,
+                  data = q2_df)
+
+q2_km1 <- ggsurvplot(q2_fit,
+                    conf.int = FALSE)
+
+q2_km1$plot +
+  theme_bw() +
+  labs(x = "Months Active",
+       title = "Kaplan-Meir curve for each company size in one plot") +
+  theme(legend.position="bottom") +
+  guides(color = guide_legend(nrow = 2, byrow = TRUE))
+```
+
+```{r}
+q2_km <- ggsurvplot(q2_fit,
+                    conf.int = TRUE)
+q2_km$plot +
+  theme_bw() +
+  facet_wrap(~company_size) +
+  labs(x = "Months Active",
+       title = "Kaplan-Meir curve for each company size with confidence interval") +
+  theme(legend.position="bottom") +
+  guides(color = guide_legend(nrow = 2, byrow = TRUE))
+```
+
+The estimated median churn time based on Kaplan-Meir curve is calculated by using the value where fit$surv is closest to 0.5, since this method is slightly more reliable and the dataset is relatively large. 
+
+```{r}
+near_median <- function(fit){
+  if (length(fit$n) > 1) {
+    stop("This only works for a single survival curve!")
+  }
+  index <- which.min(abs(fit$surv - 0.5))
+  return(fit$time[index])
+}
+```
+
+
+```{r}
+size1 <- q2_df %>% 
+  filter(company_size == "1-10")
+q2_fit1 <- survfit(Surv(months_active, churned) ~ company_size,
+                  data = size1)
+
+size2 <- q2_df %>% 
+  filter(company_size == "10-50")
+q2_fit2 <- survfit(Surv(months_active, churned) ~ company_size,
+                  data = size2)
+
+size3 <- q2_df %>% 
+  filter(company_size == "50-100")
+q2_fit3 <- survfit(Surv(months_active, churned) ~ company_size,
+                  data = size3)
+
+size4 <- q2_df %>% 
+  filter(company_size == "100-250")
+q2_fit4 <- survfit(Surv(months_active, churned) ~ company_size,
+                  data = size4)
+
+size5 <- q2_df %>% 
+  filter(company_size == "self-employed")
+q2_fit5 <- survfit(Surv(months_active, churned) ~ company_size,
+                  data = size5)
+
+```
+
+```{r}
+q2_median <- tribble(
+  ~Size, ~Median,
+  "1-10", near_median(q2_fit1),
+  "10-50", near_median(q2_fit2),
+  "50-100", near_median(q2_fit3),
+  "100-250", near_median(q2_fit4),
+  "self-employed", near_median(q2_fit5)) %>%
+  as.data.frame() 
+
+q2_median %>% 
+  kable(col.names = c("Company Size", "Estimated Median Churn Time"),
+      align = "c",
+      caption = "Estimated median using fit$surv closest to 0.5") %>% 
+  kable_styling(bootstrap_options = c("striped","hover"))
+```
+
+- Use a non-parametric bootstrap to construct 90% confidence intervals for the median of each company
+size
+
+A bootmedian function is created to conduct non-parametric bootstrap and calculate 90% confidence interval for each company size, 1000 bootstrap samples are drew for each company size.
+
+```{r}
+bootmedian <- function(df_median, df){
+  bootstrap <- tibble(experiment = rep(1:1000, each = nrow(df)),
+                        ind = sample(1:nrow(df), size = nrow(df)*1000, replace = TRUE),
+                        timestar = df$months_active[ind],
+                        churnstar = df$churned[ind])
+  
+  bias <- bootstrap %>%
+    group_by(experiment) %>%
+    summarise(delta = near_median(df_median) - near_median(survfit(Surv(timestar, churnstar) ~ experiment)))
+
+  ci <- near_median(df_median) + quantile(bias$delta, c(0.05, 0.95))
+  
+  return(ci)
+}
+```
+
+```{r}
+ci1 <- bootmedian(q2_fit1, size1)
+ci2 <- bootmedian(q2_fit2, size2)
+ci3 <- bootmedian(q2_fit3, size3)
+ci4 <- bootmedian(q2_fit4, size4)
+ci5 <- bootmedian(q2_fit5, size5)
+```
+
+```{r}
+q2_medianci <- tribble(
+  ~company_size, ~median, ~lcl, ~ucl,
+  "1-10", near_median(q2_fit1), ci1[1], ci1[2],
+  "10-50", near_median(q2_fit2), ci2[1], ci2[2],
+  "50-100", near_median(q2_fit3), ci3[1], ci3[2],
+  "100-250", near_median(q2_fit4), ci4[1], ci4[2],
+  "self-employed",near_median(q2_fit5), ci5[1], ci5[2]) %>%
+  as.data.frame()
+```
+
+```{r}
+q2_medianci %>% 
+  kable(col.names = c("Company Size", "Estimated Median Churn Time",
+                      "Lower Confidence Interval", "Upper Confidence Interval"),
+      align = "c",
+      caption = "90% Confidence interval for estimated median - non-parametric bootstrap") %>% 
+  kable_styling(bootstrap_options = c("striped","hover"))
+```
+
+- Make a plot that shows that estimate of the median and the corresponding confidence interval on the
+same axes
+
+```{r}
+ggplot(q2_medianci,
+       aes(x = reorder(company_size, median),
+           y = median,
+           colour = company_size)) + 
+  geom_point(size = 6) +
+  geom_errorbar(aes(ymax = ucl, ymin = lcl)) +
+  theme_bw() +
+  labs(x = "Company Size",
+       y = "Estimated Median Churn Time",
+       title = "90% Confidence interval for estimated median - non-parametric bootstrap") +
+  coord_flip()
+  
+```
+
+- Write some sentences describing how the median churn time changes across company sizes.
+
+The plots and table above demonstrate that the median churn time is the lowest for company size 100-250, which is only 4 months, and company size of 1-10 has the highest estimated median churn time of 7 months. As for company size of 10-50, 50-100 and self-employed, the estimated median churn times are the same, which is 5 months. 
+
 
