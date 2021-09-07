@@ -113,8 +113,17 @@ Make a plot that shows that estimate of the median and the corresponding confide
 same axes
 
 ```{r}
+fit1 <- survfit(Surv(months_active, churned) ~ company_size, data = churn_dat)
+event_times <- fit$time 
+kaplan_meier <- fit$surv 
+
+summary(fit1)
+
+```
+
+```{r}
 library(survminer)
 library(ggplot2)
-ggsurvplot(fit, conf.int = TRUE, color = "steelblue") 
+ggsurvplot(fit1, conf.int = TRUE, pval = TRUE) 
 ```
 
