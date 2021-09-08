@@ -13,6 +13,9 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(survival)
 library(survminer)
+library(kableExtra)
+library(knitr)
+library(ggplot2)
 ## Remove the line break in the file name!
 churn_dat <- read_csv("https://raw.githubusercontent.com/square/pysurvival/master/pysurvival/datasets/churn.csv")
 churn_dat <- churn_dat %>% filter(months_active > 0) %>% select(c(company_size, months_active, churned))
@@ -78,7 +81,8 @@ We calculate the estimated median churn time based where fit$surv is closest to 
 ```{r}
 median_function <- function(fit){
   index <- which.min(log(abs(fit$surv - 0.5)))
-  return(fit$time[index])
+  median <- fit$time[index]
+  return(median)
 }
 ```
 
@@ -99,12 +103,16 @@ company_median <- data_frame(company_size = unique(churn_dat$company_size), medi
 for (i in 1:length(company_median$company_size)){
   company_median$median[i] <- median_function(get(company_median$company_size[i]))
 }
+
+company_median %>%
+  knitr::kable(
+  caption = "Medians for different company sizes") %>%
+  kable_styling(c("hover", "striped"))
 ```
 
 - Use a non-parametric bootstrap to construct 90% confidence intervals for the median of each company
 size
 
-A bootmedian function is created to conduct non-parametric bootstrap and calculate 90% confidence interval for each company size, 1000 bootstrap samples are drew for each company size.
 
 ```{r}
 bootstrapmedian <- function(df_median, df){
@@ -132,7 +140,23 @@ for (i in 1:length(company_median_ci$company_size)){
            company_median_ci$lcl[i] <- ci[1]
            company_median_ci$ucl[i] = ci[2]
 }
+company_median_ci %>%
+  knitr::kable(
+  caption = "estimated mean under 90% CI") %>%
+  kable_styling(c("hover", "striped"))
 ```
+- Make a plot that shows that estimate of the median and the corresponding confidence interval on the same axes
 
-
+```{r}
+ggplot(company_median_ci,
+       aes(x = company_size,
+           y = median,
+           colour = company_size)) + 
+  geom_errorbar(aes(ymax = ucl, ymin = lcl)) +
+  geom_point() +
+  theme_bw() +
+  labs(x = "Company Size",
+       y = "Estimated Median Churn Time",
+       title = "estimated mean under 90% CI")
+```
 
