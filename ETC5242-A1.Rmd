@@ -76,12 +76,23 @@ g2$plot +
 We calculate the estimated median churn time based where fit$surv is closest to 0.5.
 
 ```{r}
-median_function <- function(x){
+median_function <- function(fit){
   index <- which.min(log(abs(fit$surv - 0.5)))
   median <- fit$time[index]
   return(median)
 }
 ```
+
+```{r}
+near_median <- function(fit){
+  if (length(fit$n) > 1) {
+    stop("This only works for a single survival curve!")
+  }
+  index <- which.min(abs(fit$surv - 0.5))
+  return(fit$time[index])
+}
+```
+
 
 ```{r}
 
