@@ -162,4 +162,41 @@ ggplot(company_median_ci,
        y = "Estimated Median Churn Time",
        title = "estimated mean under 90% CI")
 ```
+Q3
+- Use a nonparametric bootstrap to re-sample the data and construct 90% confidence intervals for the survival curve at each time.
 
+```{r}
+mean_ci(Surv(churn_dat$months_active, churn_dat$churned)) %>%
+  knitr::kable(
+  caption = "Minimum and Maximum value in the survival curve") %>%
+  kable_styling(c("hover", "striped"))
+```
+
+```{r}
+is_in_ci <- function(max_y, true_max, n, n_sim = 1000) {
+bootstrap <- tibble(experiment = rep(1:n_sim,
+each = n),
+ystar = runif(n * n_sim, 0, max_y))
+bias <- bootstrap %>%
+group_by(experiment) %>%
+summarise(delta = max_y - max(ystar))
+int <- max_y + quantile(bias$delta, c(0.05, 0.95))
+return((true_max > int[1]) & (true_max < int[2]))
+}
+```
+
+
+Check the coverage
+```{r}
+true_max <- 2.32718
+
+experiments <- tibble(experiment = rep(1:1000,
+each = 100),
+draw = runif(100*1000,0,true_max))
+test <- experiments %>%
+group_by(experiment) %>%
+summarise(max_y = max(draw)) %>%
+mutate(is_in = map_dbl(max_y,
+~is_in_ci(.x, true_max, 100)))
+mean(test$is_in)
+```
