@@ -235,13 +235,13 @@ upperCIs
 
 
 ```{r}
-months <- c(1:11)
+Month <- c(1:11)
 
-time_50_100_CIs <- data.frame(months, q3_fit$surv, lowerCIs, upperCIs) %>%
+time_50_100_CIs <- data.frame(Month, q3_fit$surv, lowerCIs, upperCIs) %>%
   rename("Probability" = q3_fit.surv, "Lower Confidence Interval" = lowerCIs, "Upper Confidence Interval" = upperCIs) 
 
 kable(time_50_100_CIs, 
-      caption = "90% confidence intervals for the survival curve at each time") %>% 
+      caption = "90% confidence intervals for the survival curve at each time for company size 50-100") %>% 
   kable_styling(c("hover", "striped"))
 ```
 
