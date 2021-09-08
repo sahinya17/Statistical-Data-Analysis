@@ -225,3 +225,48 @@ summarise(delta = median_function(df_median) - median_function(survfit(Surv(time
 ```
 
 
+Q4
+
+log-rank test
+```{r}
+q4_comp <- churn_dat %>%
+ mutate(comp_hyp = case_when(company_size == "50-100" ~ 1, company_size== "100-250" ~ 2, TRUE ~ 0))
+
+q4_comp <- q4_comp %>%
+  filter(comp_hyp == 1| comp_hyp == 2)
+```
+
+```{r}
+survdiff(Surv(months_active, churned) ~ comp_hyp, data=q4_comp)
+```
+
+
+```{r}
+treatment <- q4_comp$churned
+outcome <- q4_comp$months_active
+
+#Difference in means
+original <- diff(tapply(outcome, treatment, mean))
+mean(outcome[treatment==1])-mean(outcome[treatment==0])
+
+#Permutation test
+permutation.test <- function(treatment, outcome, n){
+  distribution=c()
+  result=0
+  for(i in 1:n){
+    distribution[i]=diff(by(outcome, sample(treatment, length(treatment), FALSE), mean))
+  }
+  result=sum(abs(distribution) >= abs(original))/(n)
+  return(list(result, distribution))
+}
+
+test1 <- permutation.test(treatment, outcome, 10000)
+hist(test1[[2]], breaks=50, col='grey', main="Permutation Distribution", las=1, xlab='')
+abline(v=original, lwd=3, col="red")
+
+test1[[1]]
+
+
+#Compare to t-test
+t.test(outcome~treatment)
+```
