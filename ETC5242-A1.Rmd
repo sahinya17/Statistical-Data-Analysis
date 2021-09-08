@@ -202,7 +202,9 @@ mutate(is_in = map_dbl(max_y,
 mean(test$is_in)
 ```
 
+# Question 3
 
+## Choose company size of 50-100
 ```{r}
 q3_company <- churn_dat %>% 
   filter(company_size == "50-100")
@@ -211,18 +213,40 @@ q3_fit <- survfit(Surv(months_active, churned) ~1,
                   data = q3_company)
 ```
 
-bootstrap
-```{r}
-bootstrap_time <- tibble(experiment = rep(1:10000, each =100),
-                        ind = sample(1:100, size = 100*1000, replace = TRUE),
-                                     ystar = q3_company[ind])
-bias <- bootstrap_time %>% 
-  group_by(experiment) %>% 
-  summarise(delta = mean(y) - mean(ystar))
-mean(y) + quantile(bias$delta, c(0.05, 0,95))
-summarise(delta = median_function(df_median) - median_function(survfit(Surv(timestar, churnstar) ~ experiment)))
+## Use a nonparametric bootstrap to re-sample the data and construct 90% confidence intervals for the survival curve at each time.
 
+```{r}
+bootstrap_time <- tibble(experiment = rep(1:1000, each =672),
+                        ind = sample(1:672, size = 672*1000, replace = TRUE),
+                                    months_active = q3_company$months_active[ind],
+                                    churned = q3_company$churned[ind])
+bias_time <- bootstrap_time %>% 
+  group_by(experiment) %>% 
+  summarise(delta = q3_fit$surv - survfit(Surv(months_active, churned) ~1)$surv)
+
+lowerCIs <- q3_fit$surv + quantile(bias_time$delta, 0.05)
+upperCIs <- q3_fit$surv + quantile(bias_time$delta, 0.95)
 ```
+
+```{r}
+lowerCIs
+upperCIs
+```
+
+
+```{r}
+months <- c(1:11)
+
+time_50_100_CIs <- data.frame(months, q3_fit$surv, lowerCIs, upperCIs) %>%
+  rename("Probability" = q3_fit.surv, "Lower Confidence Interval" = lowerCIs, "Upper Confidence Interval" = upperCIs) 
+
+kable(time_50_100_CIs, 
+      caption = "90% confidence intervals for the survival curve at each time") %>% 
+  kable_styling(c("hover", "striped"))
+```
+
+## Compute simultaneous coverage for the entire survival function.
+
 
 
 Q4
