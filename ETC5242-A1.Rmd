@@ -229,12 +229,6 @@ upperCIs <- q3_fit$surv + quantile(bias_time$delta, 0.95)
 ```
 
 ```{r}
-lowerCIs
-upperCIs
-```
-
-
-```{r}
 Month <- c(1:11)
 
 time_50_100_CIs <- data.frame(Month, q3_fit$surv, lowerCIs, upperCIs) %>%
