@@ -15,7 +15,7 @@ library(survival)
 library(survminer)
 ## Remove the line break in the file name!
 churn_dat <- read_csv("https://raw.githubusercontent.com/square/pysurvival/master/pysurvival/datasets/churn.csv")
-churn_dat <- churn_dat %>% filter(months_active > 0) %>% select(c(months_active, churned, company_size))
+churn_dat <- churn_dat %>% filter(months_active > 0) %>% select(c(company_size, months_active, churned))
 ```
 
 ```{r}
@@ -78,17 +78,6 @@ We calculate the estimated median churn time based where fit$surv is closest to 
 ```{r}
 median_function <- function(fit){
   index <- which.min(log(abs(fit$surv - 0.5)))
-  median <- fit$time[index]
-  return(median)
-}
-```
-
-```{r}
-near_median <- function(fit){
-  if (length(fit$n) > 1) {
-    stop("This only works for a single survival curve!")
-  }
-  index <- which.min(abs(fit$surv - 0.5))
   return(fit$time[index])
 }
 ```
@@ -98,17 +87,17 @@ near_median <- function(fit){
 
 for (size in unique(churn_dat$company_size)){
   temp_data <- churn_dat %>% filter(company_size == size)
-  name <- paste(size, "fit", sep = "_")
+  name <- size
   assign(name, survfit(Surv(months_active, churned) ~ company_size, data = temp_data))
 }
 
 ```
 
 ```{r}
-company_median <- data_frame(company_size = unique(churn_dat$company_size))
+company_median <- data_frame(company_size = unique(churn_dat$company_size), median = c(NA, NA, NA, NA, NA))
 
-for (i in 1:length(company_median)){
-  company_median <- company_median %>% mutate(median = median_function(paste(company_median[i], "fit", sep="_")))
+for (i in 1:length(company_median$company_size)){
+  company_median$median[i] <- median_function(get(company_median$company_size[i]))
 }
 ```
 
@@ -126,53 +115,24 @@ bootstrapmedian <- function(df_median, df){
   
   bias <- bootstrap %>%
     group_by(experiment) %>%
-    summarise(delta = near_median(df_median) - near_median(survfit(Surv(timestar, churnstar) ~ experiment)))
+    summarise(delta = median_function(df_median) - median_function(survfit(Surv(timestar, churnstar) ~ experiment)))
 
-  ci <- near_median(df_median) + quantile(bias$delta, c(0.05, 0.95))
+  ci <- median_function(df_median) + quantile(bias$delta, c(0.05, 0.95))
   
   return(ci)
 }
 ```
 
 ```{r}
-company_median_ci <- data_frame(company_size = unique(churn_dat$company_size))
-for (i in 1:length(company_median_ci)){
-  ci <- bootstrapmedian(paste(company_median[i], "fit", sep="_"), churn_dat %>% filter(company_size == company_median_ci[i,]))
-  company_median_ci <- company_median_ci %>% 
-    mutate(median = median_function(paste(company_median[i], "fit", sep="_")),
-           lcl = ci[1], ucl = ci[2])
+company_median_ci <- data_frame(company_size = unique(churn_dat$company_size), median = c(NA, NA, NA, NA, NA), lcl = c(NA, NA, NA, NA, NA), ucl = c(NA, NA, NA, NA, NA))
+
+for (i in 1:length(company_median_ci$company_size)){
+  ci <- bootstrapmedian(get(company_median_ci$company_size[i]), churn_dat %>% filter(company_size == company_median_ci$company_size[i]))
+  company_median_ci$median[i] <- median_function(get(company_median_ci$company_size[i]))
+           company_median_ci$lcl[i] <- ci[1]
+           company_median_ci$ucl[i] = ci[2]
 }
 ```
 
-```{r}
-q2_medianci %>% 
-  kable(col.names = c("Company Size", "Estimated Median Churn Time",
-                      "Lower Confidence Interval", "Upper Confidence Interval"),
-      align = "c",
-      caption = "90% Confidence interval for estimated median - non-parametric bootstrap") %>% 
-  kable_styling(bootstrap_options = c("striped","hover"))
-```
-
-- Make a plot that shows that estimate of the median and the corresponding confidence interval on the
-same axes
-
-```{r}
-ggplot(q2_medianci,
-       aes(x = reorder(company_size, median),
-           y = median,
-           colour = company_size)) + 
-  geom_point(size = 6) +
-  geom_errorbar(aes(ymax = ucl, ymin = lcl)) +
-  theme_bw() +
-  labs(x = "Company Size",
-       y = "Estimated Median Churn Time",
-       title = "90% Confidence interval for estimated median - non-parametric bootstrap") +
-  coord_flip()
-  
-```
-
-- Write some sentences describing how the median churn time changes across company sizes.
-
-The plots and table above demonstrate that the median churn time is the lowest for company size 100-250, which is only 4 months, and company size of 1-10 has the highest estimated median churn time of 7 months. As for company size of 10-50, 50-100 and self-employed, the estimated median churn times are the same, which is 5 months. 
 
 
