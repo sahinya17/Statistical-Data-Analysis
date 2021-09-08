@@ -11,6 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(tidyverse)
+library(survival)
+library(survminer)
 ## Remove the line break in the file name!
 churn_dat <- read_csv("https://raw.githubusercontent.com/square/pysurvival/master/pysurvival/datasets/churn.csv")
 churn_dat <- churn_dat %>% filter(months_active > 0) %>% select(c(months_active, churned, company_size))
@@ -74,58 +76,29 @@ g2$plot +
 We calculate the estimated median churn time based where fit$surv is closest to 0.5.
 
 ```{r}
-near_median <- function(x){
+median_function <- function(x){
   index <- which.min(log(abs(fit$surv - 0.5)))
   median <- fit$time[index]
   return(median)
 }
 ```
 
------
-
 ```{r}
-size1 <- q2_df %>% 
-  filter(company_size == "1-10")
-q2_fit1 <- survfit(Surv(months_active, churned) ~ company_size,
-                  data = size1)
 
-size2 <- q2_df %>% 
-  filter(company_size == "10-50")
-q2_fit2 <- survfit(Surv(months_active, churned) ~ company_size,
-                  data = size2)
-
-size3 <- q2_df %>% 
-  filter(company_size == "50-100")
-q2_fit3 <- survfit(Surv(months_active, churned) ~ company_size,
-                  data = size3)
-
-size4 <- q2_df %>% 
-  filter(company_size == "100-250")
-q2_fit4 <- survfit(Surv(months_active, churned) ~ company_size,
-                  data = size4)
-
-size5 <- q2_df %>% 
-  filter(company_size == "self-employed")
-q2_fit5 <- survfit(Surv(months_active, churned) ~ company_size,
-                  data = size5)
+for (size in unique(churn_dat$company_size)){
+  temp_data <- churn_dat %>% filter(company_size == size)
+  name <- paste(size, "fit", sep = "_")
+  assign(name, survfit(Surv(months_active, churned) ~ company_size, data = temp_data))
+}
 
 ```
 
 ```{r}
-q2_median <- tribble(
-  ~Size, ~Median,
-  "1-10", near_median(q2_fit1),
-  "10-50", near_median(q2_fit2),
-  "50-100", near_median(q2_fit3),
-  "100-250", near_median(q2_fit4),
-  "self-employed", near_median(q2_fit5)) %>%
-  as.data.frame() 
+company_median <- data_frame(company_size = unique(churn_dat$company_size))
 
-q2_median %>% 
-  kable(col.names = c("Company Size", "Estimated Median Churn Time"),
-      align = "c",
-      caption = "Estimated median using fit$surv closest to 0.5") %>% 
-  kable_styling(bootstrap_options = c("striped","hover"))
+for (i in 1:length(company_median)){
+  company_median <- company_median %>% mutate(median = median_function(paste(company_median[i], "fit", sep="_")))
+}
 ```
 
 - Use a non-parametric bootstrap to construct 90% confidence intervals for the median of each company
@@ -134,7 +107,7 @@ size
 A bootmedian function is created to conduct non-parametric bootstrap and calculate 90% confidence interval for each company size, 1000 bootstrap samples are drew for each company size.
 
 ```{r}
-bootmedian <- function(df_median, df){
+bootstrapmedian <- function(df_median, df){
   bootstrap <- tibble(experiment = rep(1:1000, each = nrow(df)),
                         ind = sample(1:nrow(df), size = nrow(df)*1000, replace = TRUE),
                         timestar = df$months_active[ind],
@@ -151,22 +124,13 @@ bootmedian <- function(df_median, df){
 ```
 
 ```{r}
-ci1 <- bootmedian(q2_fit1, size1)
-ci2 <- bootmedian(q2_fit2, size2)
-ci3 <- bootmedian(q2_fit3, size3)
-ci4 <- bootmedian(q2_fit4, size4)
-ci5 <- bootmedian(q2_fit5, size5)
-```
-
-```{r}
-q2_medianci <- tribble(
-  ~company_size, ~median, ~lcl, ~ucl,
-  "1-10", near_median(q2_fit1), ci1[1], ci1[2],
-  "10-50", near_median(q2_fit2), ci2[1], ci2[2],
-  "50-100", near_median(q2_fit3), ci3[1], ci3[2],
-  "100-250", near_median(q2_fit4), ci4[1], ci4[2],
-  "self-employed",near_median(q2_fit5), ci5[1], ci5[2]) %>%
-  as.data.frame()
+company_median_ci <- data_frame(company_size = unique(churn_dat$company_size))
+for (i in 1:length(company_median_ci)){
+  ci <- bootstrapmedian(paste(company_median[i], "fit", sep="_"), churn_dat %>% filter(company_size == company_median_ci[i,]))
+  company_median_ci <- company_median_ci %>% 
+    mutate(median = median_function(paste(company_median[i], "fit", sep="_")),
+           lcl = ci[1], ucl = ci[2])
+}
 ```
 
 ```{r}
