@@ -59,10 +59,10 @@ company_km_model %>%
 ```
 
 
-# Q2
+# Question 2
 
 
-- Compute the Kaplan-Meir curve and use this to estimate the median churn time.
+## Compute the Kaplan-Meir curve and use this to estimate the median churn time.
 
 ```{r}
 fit <- survfit(Surv(months_active, churned) ~ company_size,
@@ -76,7 +76,6 @@ g2$plot +
   theme(legend.position="bottom") 
 ```
 
-We calculate the estimated median churn time based where fit$surv is closest to 0.5.
 
 ```{r}
 median_function <- function(fit){
@@ -110,8 +109,12 @@ company_median %>%
   kable_styling(c("hover", "striped"))
 ```
 
-- Use a non-parametric bootstrap to construct 90% confidence intervals for the median of each company
-size
+The table above demonstrates the median churn time estimated for different company size.
+- Company size of 1-10 have the highest estimated median of 7 months.
+- Company size of 100-250 have the lowest estimated median of 4 months.
+- The rest of the company sizes have the same estimated median of 5 months.
+
+## Use a non-parametric bootstrap to construct 90% confidence intervals for the median of each company size
 
 
 ```{r}
@@ -145,7 +148,7 @@ company_median_ci %>%
   caption = "estimated mean under 90% CI") %>%
   kable_styling(c("hover", "striped"))
 ```
-- Make a plot that shows that estimate of the median and the corresponding confidence interval on the same axes
+## Make a plot that shows that estimate of the median and the corresponding confidence interval on the same axes
 
 ```{r}
 ggplot(company_median_ci,
