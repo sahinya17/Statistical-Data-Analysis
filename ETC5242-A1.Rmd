@@ -148,6 +148,7 @@ company_median_ci %>%
   caption = "estimated mean under 90% CI") %>%
   kable_styling(c("hover", "striped"))
 ```
+
 ## Make a plot that shows that estimate of the median and the corresponding confidence interval on the same axes
 
 ```{r}
@@ -200,3 +201,27 @@ mutate(is_in = map_dbl(max_y,
 ~is_in_ci(.x, true_max, 100)))
 mean(test$is_in)
 ```
+
+
+```{r}
+q3_company <- churn_dat %>% 
+  filter(company_size == "50-100")
+
+q3_fit <- survfit(Surv(months_active, churned) ~1,
+                  data = q3_company)
+```
+
+bootstrap
+```{r}
+bootstrap_time <- tibble(experiment = rep(1:10000, each =100),
+                        ind = sample(1:100, size = 100*1000, replace = TRUE),
+                                     ystar = q3_company[ind])
+bias <- bootstrap_time %>% 
+  group_by(experiment) %>% 
+  summarise(delta = mean(y) - mean(ystar))
+mean(y) + quantile(bias$delta, c(0.05, 0,95))
+summarise(delta = median_function(df_median) - median_function(survfit(Surv(timestar, churnstar) ~ experiment)))
+
+```
+
+
