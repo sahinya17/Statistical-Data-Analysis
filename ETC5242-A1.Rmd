@@ -27,19 +27,27 @@ churn_dat <- churn_dat %>% filter(months_active > 0) %>% select(c(company_size, 
 ```{r, message = FALSE, warning = FALSE}
 # Kaplan Meier Function
 km_model <- function(time, event){
-  
-  dataset <- data_frame(time, event)
-  
-  km_data <- dataset %>% 
+  dataset <- data_frame(time = churn_dat$months_active, event = churn_dat$churned)
+  dataset1 <- dataset %>% 
     group_by(time, event) %>% 
-    summarise(died = n()) %>% 
+    summarise(total_count = n()) %>% 
     ungroup() %>% 
-    mutate(risk = nrow(dataset) - accumulate(died, `+`) + died) %>% 
-    filter(event == 1) %>% 
-    mutate(probability = 1 - died/risk,
-           survival = accumulate(probability, `*`))
+    pivot_wider(names_from = event, values_from = total_count, values_fill = 0, names_prefix = "status")
+
+result <- data_frame(result = double())
+temp_val <- nrow(dataset)
+survival_val <- 1
+for (i in 1:nrow(dataset1)){
+  survival_val <- survival_val * (1 - dataset1$status1[i]/temp_val)
+  result <- rbind(result, survival_val)
+  temp_val <- temp_val - (dataset1$status0[i] + dataset1$status1[i])
+}
+
+dataset1 <- cbind(dataset1, result)
+names(dataset1) <- c("time", "status0", "status1", "survival")
+
   
-  return(km_data %>% select(time, survival))
+  return(dataset1 %>% select(time, survival))
 }
 
 km_survive <- km_model(churn_dat$months_active, churn_dat$churned) 
@@ -63,13 +71,25 @@ company_km_model %>%
   ggplot(aes(time, survival)) +
   geom_step() +
   facet_wrap(~company_size)
+
+
+churn_dat%>%
+  group_by(company_size)%>%
+  summarise(km_model(months_active,churned))%>%
+  ggplot(aes(x = time,y = survival))+
+  geom_step()+
+  ylim(0,1)+
+  scale_x_continuous(breaks = seq(0,12,1))+
+  labs(x = "Survival Time", 
+       y= "Survival Probabilities")+
+  ggtitle("The Kaplan-Meier curve for each company_size")+
+  facet_wrap(~company_size)
 ```
 
 
 ```{r}
-Kaplan_Meier_estimate <- function(time,event){
-  
-  data<-tibble(time,event)
+Kaplan_Meier_estimate <- function(time, event){
+  data <- tibble(time, event)
   survival_table <- data%>%
     group_by(time,event) %>%
     summarise(Number = n())%>%
@@ -88,7 +108,6 @@ Kaplan_Meier_estimate <- function(time,event){
     mutate_all(funs(as.numeric(.)))
   
 }
-
 
 plot1<- Kaplan_Meier_estimate(churn_dat$months_active,churn_dat$churned)
 plot1%>%
