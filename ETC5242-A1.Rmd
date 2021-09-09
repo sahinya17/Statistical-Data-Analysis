@@ -166,27 +166,6 @@ ggplot(company_median_ci,
 Q3
 - Use a nonparametric bootstrap to re-sample the data and construct 90% confidence intervals for the survival curve at each time.
 
-```{r}
-mean_ci(Surv(churn_dat$months_active, churn_dat$churned)) %>%
-  knitr::kable(
-  caption = "Minimum and Maximum value in the survival curve") %>%
-  kable_styling(c("hover", "striped"))
-```
-
-```{r}
-is_in_ci <- function(max_y, true_max, n, n_sim = 1000) {
-bootstrap <- tibble(experiment = rep(1:n_sim,
-each = n),
-ystar = runif(n * n_sim, 0, max_y))
-bias <- bootstrap %>%
-group_by(experiment) %>%
-summarise(delta = max_y - max(ystar))
-int <- max_y + quantile(bias$delta, c(0.05, 0.95))
-return((true_max > int[1]) & (true_max < int[2]))
-}
-```
-
-
 Check the coverage
 ```{r}
 true_max <- 2.32718
@@ -224,15 +203,15 @@ bias_time <- bootstrap_time %>%
   group_by(experiment) %>% 
   summarise(delta = q3_fit$surv - survfit(Surv(months_active, churned) ~1)$surv)
 
-lowerCIs <- q3_fit$surv + quantile(bias_time$delta, 0.05)
-upperCIs <- q3_fit$surv + quantile(bias_time$delta, 0.95)
+lower <- q3_fit$surv + quantile(bias_time$delta, 0.05)
+upper <- q3_fit$surv + quantile(bias_time$delta, 0.95)
 ```
 
 ```{r}
 Month <- c(1:11)
 
-time_50_100_CIs <- data.frame(Month, q3_fit$surv, lowerCIs, upperCIs) %>%
-  rename("Probability" = q3_fit.surv, "Lower Confidence Interval" = lowerCIs, "Upper Confidence Interval" = upperCIs) 
+time_50_100_CIs <- data.frame(Month, q3_fit$surv, lower, upper) %>%
+  rename("Probability" = q3_fit.surv, "Lower Confidence Interval" = lower, "Upper Confidence Interval" = upper) 
 
 kable(time_50_100_CIs, 
       caption = "90% confidence intervals for the survival curve at each time for company size 50-100") %>% 
@@ -294,41 +273,28 @@ t.test(outcome~treatment)
 ## fit a Weibull distribution to the survival data to estimate the mean and the median of the churn time for each company size
 
 ```{r}
-size1 <- churn_dat %>% 
-  filter(company_size == "10-50")
-
-size2 <- churn_dat %>% 
-  filter(company_size == "50-100")
-
-size3 <- churn_dat %>% 
-  filter(company_size == "100-250")
-
-size4 <- churn_dat %>% 
-  filter(company_size == "self-employed")
-```
-
-```{r}
 fit_q5 <- function(dat){
   fit <- survreg(Surv(months_active, churned) ~ 1, data = dat, dist = "weibull" )
   rweibull_shape <- 1 / fit$scale ## Approximately 3
   rweibull_scale <- exp(coef(fit)) ## approximately 7
 
-print(rweibull_scale*log(2)^(1/rweibull_shape))
-print(rweibull_scale*gamma(1+(1/rweibull_shape)))
+median <- rweibull_scale*log(2)^(1/rweibull_shape)
+mean <- rweibull_scale*gamma(1+(1/rweibull_shape))
+
+return(c(median, mean))
   
 }
 ```
 
 ```{r}
-weibull1<- fit_q5(size1)
-weibull2<- fit_q5(size2)
-weibull3<- fit_q5(size3)
-weibull4<- fit_q5(size4)
-```
+weibull <- data_frame(company_size = character(), median = double(), mean = double())
+for (size in unique(churn_dat$company_size)){
+  temp_data <- churn_dat %>% filter(company_size == size)
+  return_values <- fit_q5(temp_data)
+  weibull <- rbind(weibull, c(size, round(return_values[1], 2), round(return_values[2],2)))
+}
 
-```{r}
-weibull <- data.frame(weibull1, weibull2, weibull3, weibull4) %>% 
-  rename(median == "Intercept")
+names(weibull) <- c("company_size", "median", "mean")
 
 kable(weibull)
 ```
