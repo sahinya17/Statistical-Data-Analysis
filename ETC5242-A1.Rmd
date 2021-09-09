@@ -66,6 +66,54 @@ company_km_model %>%
 ```
 
 
+```{r}
+Kaplan_Meier_estimate <- function(time,event){
+  
+  data<-tibble(time,event)
+  survival_table <- data%>%
+    group_by(time,event) %>%
+    summarise(Number = n())%>%
+    ungroup()%>%
+    pivot_wider(names_from = "event",values_from = "Number")%>%
+    rename(Complete = "0",Absence = "1")%>%
+    mutate_all(~replace(., is.na(.), 0))%>%
+    mutate(number = accumulate2(Complete[1:(n()-1)],Absence[1:(n()-1)],
+                                function(x,y,z) x - y - z,.init = nrow(data)))
+ 
+   initial <- c(rep(0,4),nrow(survival_table)) 
+   
+  survival_table1 <- rbind(initial,survival_table) %>%
+    mutate(ST = accumulate2(Absence[2:n()],number[2:n()],
+                            function(x,y,z) x*(1 - y/z),.init = 1))%>%
+    mutate_all(funs(as.numeric(.)))
+  
+}
+
+
+plot1<- Kaplan_Meier_estimate(churn_dat$months_active,churn_dat$churned)
+plot1%>%
+  ggplot(aes(x = time , y = ST))+
+  geom_step()+
+  ylim(0,1)+
+  scale_x_continuous(breaks = seq(0,12,1))+
+  ggtitle("The Kaplan-Meier curve for the full data")+
+  labs(x = "Survival Time", 
+       y= "Survival Probabilities")
+
+churn_dat%>%
+  group_by(company_size)%>%
+  summarise(Kaplan_Meier_estimate(months_active,churned))%>%
+  ggplot(aes(x = time,y = ST))+
+  geom_step()+
+  ylim(0,1)+
+  scale_x_continuous(breaks = seq(0,12,1))+
+  labs(x = "Survival Time", 
+       y= "Survival Probabilities")+
+  ggtitle("The Kaplan-Meier curve for each company_size")+
+  facet_wrap(~company_size)
+```
+
+
 # Question 2
 
 
@@ -75,7 +123,9 @@ company_km_model %>%
 fit <- survfit(Surv(months_active, churned) ~ company_size,
                   data = churn_dat)
 
-g2 <- ggsurvplot(fit,conf.int = FALSE)
+g2 <- ggsurvplot(fit,
+                 surv.median.line = "hv",
+                 conf.int = FALSE)
 
 g2$plot +
   labs(x = "Months Active",
@@ -94,13 +144,11 @@ median_function <- function(fit){
 
 
 ```{r}
-
 for (size in unique(churn_dat$company_size)){
   temp_data <- churn_dat %>% filter(company_size == size)
   name <- size
   assign(name, survfit(Surv(months_active, churned) ~ company_size, data = temp_data))
 }
-
 ```
 
 ```{r}
@@ -287,6 +335,7 @@ for (size in unique(churn_dat$company_size)){
 
 names(weibull) <- c("company_size", "median", "mean")
 
-kable(weibull)
+kable(weibull, caption = "Estimated mean and the median of the churn time for each company size with Weibull distribution") %>% 
+  kable_styling(c("hover", "striped"))
 ```
 
