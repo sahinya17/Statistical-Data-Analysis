@@ -289,3 +289,47 @@ test1[[1]]
 t.test(outcome~treatment)
 ```
 
+# Question 5
+
+## fit a Weibull distribution to the survival data to estimate the mean and the median of the churn time for each company size
+
+```{r}
+size1 <- churn_dat %>% 
+  filter(company_size == "10-50")
+
+size2 <- churn_dat %>% 
+  filter(company_size == "50-100")
+
+size3 <- churn_dat %>% 
+  filter(company_size == "100-250")
+
+size4 <- churn_dat %>% 
+  filter(company_size == "self-employed")
+```
+
+```{r}
+fit_q5 <- function(dat){
+  fit <- survreg(Surv(months_active, churned) ~ 1, data = dat, dist = "weibull" )
+  rweibull_shape <- 1 / fit$scale ## Approximately 3
+  rweibull_scale <- exp(coef(fit)) ## approximately 7
+
+print(rweibull_scale*log(2)^(1/rweibull_shape))
+print(rweibull_scale*gamma(1+(1/rweibull_shape)))
+  
+}
+```
+
+```{r}
+weibull1<- fit_q5(size1)
+weibull2<- fit_q5(size2)
+weibull3<- fit_q5(size3)
+weibull4<- fit_q5(size4)
+```
+
+```{r}
+weibull <- data.frame(weibull1, weibull2, weibull3, weibull4) %>% 
+  rename(median == "Intercept")
+
+kable(weibull)
+```
+
