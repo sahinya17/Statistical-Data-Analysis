@@ -24,6 +24,10 @@ churn_dat <- read_csv("https://raw.githubusercontent.com/square/pysurvival/maste
 churn_dat <- churn_dat %>% filter(months_active > 0) %>% select(c(company_size, months_active, churned)) %>% na.omit()
 ```
 
+# Question 1
+
+## Write the function
+
 ```{r, message = FALSE, warning = FALSE}
 # Kaplan Meier Function
 km_model <- function(time, event){
@@ -49,15 +53,22 @@ names(dataset1) <- c("time", "status0", "status1", "survival")
   
   return(dataset1 %>% select(time, survival))
 }
+```
 
+## The Kaplan-Meier curve for the full data
+```{r , message = FALSE, warning = FALSE}
 km_survive <- km_model(churn_dat$months_active, churn_dat$churned) 
 
 km_survive %>% 
   ggplot(aes(time, survival)) +
   geom_step() +
-  ggtitle(label = "Kaplen Meier Curve for the Survival Data")
+  ggtitle(label = "Kaplan Meier Curve for the Survival Data")
 ```
+The Kaplan Meier curve for the full data shows that the customers churned to 50% by month 5, and the probability slow down until month 10 and then decrease at the end of month 12.
 
+
+
+## The Kaplan-Meier curve for each company_size
 
 ```{r, message = FALSE, warning = FALSE}
 company_km_model <- data.frame(time = double(), survival = double(), company_size = character())
@@ -70,59 +81,18 @@ for(size in unique(churn_dat$company_size)){
 company_km_model %>% 
   ggplot(aes(time, survival)) +
   geom_step() +
-  facet_wrap(~company_size) +
-  theme_minimal()
-```
-
-
-```{r}
-Kaplan_Meier_estimate <- function(time, event){
-  data <- tibble(time, event)
-  survival_table <- data%>%
-    group_by(time,event) %>%
-    summarise(Number = n())%>%
-    ungroup()%>%
-    pivot_wider(names_from = "event",values_from = "Number")%>%
-    rename(Complete = "0",Absence = "1")%>%
-    mutate_all(~replace(., is.na(.), 0))%>%
-    mutate(number = accumulate2(Complete[1:(n()-1)],Absence[1:(n()-1)],
-                                function(x,y,z) x - y - z,.init = nrow(data)))
- 
-   initial <- c(rep(0,4),nrow(survival_table)) 
-   
-  survival_table1 <- rbind(initial,survival_table) %>%
-    mutate(ST = accumulate2(Absence[2:n()],number[2:n()],
-                            function(x,y,z) x*(1 - y/z),.init = 1))%>%
-    mutate_all(funs(as.numeric(.)))
-  
-}
-
-plot1<- Kaplan_Meier_estimate(churn_dat$months_active,churn_dat$churned)
-plot1%>%
-  ggplot(aes(x = time , y = ST))+
-  geom_step()+
-  ylim(0,1)+
-  scale_x_continuous(breaks = seq(0,12,1))+
-  ggtitle("The Kaplan-Meier curve for the full data")+
-  labs(x = "Survival Time", 
-       y= "Survival Probabilities")
-
-churn_dat%>%
-  group_by(company_size)%>%
-  summarise(Kaplan_Meier_estimate(months_active,churned))%>%
-  ggplot(aes(x = time,y = ST))+
-  geom_step()+
-  ylim(0,1)+
-  scale_x_continuous(breaks = seq(0,12,1))+
-  labs(x = "Survival Time", 
-       y= "Survival Probabilities")+
-  ggtitle("The Kaplan-Meier curve for each company_size")+
   facet_wrap(~company_size)
 ```
 
+The Kaplan-Meier curve for the full data and company size of 50-100 are very similar.
+
+For all of the company regardless of their sizes, they all have a rapid churned decrease for the first 4 months, and come with a flatter churned from month 6 to month 8. Next, a drop at the end of the time at month 12 except for self-employed company. For self-employed company, the survival probability stays around 50% in month 6. As there are no customers churned after month 6, there is a flat line shown in the graph.
+
+
+
+
 
 # Question 2
-
 
 ## Compute the Kaplan-Meir curve and use this to estimate the median churn time.
 
@@ -171,10 +141,6 @@ company_median %>%
   kable_styling(c("hover", "striped"))
 ```
 
-The table above demonstrates the median churn time estimated for different company size.
-- Company size of 1-10 have the highest estimated median of 7 months.
-- Company size of 100-250 have the lowest estimated median of 4 months.
-- The rest of the company sizes have the same estimated median of 5 months.
 
 ## Use a non-parametric bootstrap to construct 90% confidence intervals for the median of each company size
 
@@ -225,6 +191,13 @@ ggplot(company_median_ci,
        y = "Estimated Median Churn Time",
        title = "estimated mean under 90% CI")
 ```
+
+The table above demonstrates the median churn time estimated for different company size.
+- Company size of 1-10 have the highest estimated median of 7 months.
+- Company size of 100-250 have the lowest estimated median of 4 months.
+- The rest of the company sizes have the same estimated median of 5 months.
+
+
 # Question 3
 
 ## Choose company size of 50-100
@@ -266,9 +239,9 @@ kable(time_50_100_CIs,
 
 
 
-Q4
+# Question 4
 
-log-rank test
+## Write a function to compute the log-rank test statistic for two populations.
 ```{r}
 q4_comp <- churn_dat %>%
  mutate(comp_hyp = case_when(company_size == "50-100" ~ 1, company_size== "100-250" ~ 2, TRUE ~ 0))
