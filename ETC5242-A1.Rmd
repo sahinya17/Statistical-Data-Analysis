@@ -27,7 +27,7 @@ churn_dat <- churn_dat %>% filter(months_active > 0) %>% select(c(company_size, 
 ```{r, message = FALSE, warning = FALSE}
 # Kaplan Meier Function
 km_model <- function(time, event){
-  dataset <- data_frame(time = churn_dat$months_active, event = churn_dat$churned)
+  dataset <- data_frame(time, event)
   dataset1 <- dataset %>% 
     group_by(time, event) %>% 
     summarise(total_count = n()) %>% 
@@ -70,20 +70,8 @@ for(size in unique(churn_dat$company_size)){
 company_km_model %>% 
   ggplot(aes(time, survival)) +
   geom_step() +
-  facet_wrap(~company_size)
-
-
-churn_dat%>%
-  group_by(company_size)%>%
-  summarise(km_model(months_active,churned))%>%
-  ggplot(aes(x = time,y = survival))+
-  geom_step()+
-  ylim(0,1)+
-  scale_x_continuous(breaks = seq(0,12,1))+
-  labs(x = "Survival Time", 
-       y= "Survival Probabilities")+
-  ggtitle("The Kaplan-Meier curve for each company_size")+
-  facet_wrap(~company_size)
+  facet_wrap(~company_size) +
+  theme_minimal()
 ```
 
 
