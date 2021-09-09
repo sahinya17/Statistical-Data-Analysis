@@ -288,3 +288,26 @@ test1[[1]]
 #Compare to t-test
 t.test(outcome~treatment)
 ```
+
+If we use the given formula:
+
+```{r}
+q4_50_100 <- churn_dat %>%
+  filter(company_size == "50-100")
+q4_fit_50_100 <- survfit(Surv(months_active, churned) ~ 1, data = q4_50_100)
+
+q4_100_250 <- churn_dat %>%
+  filter(company_size == "100-250")
+q4_fit_100_250 <- survfit(Surv(months_active, churned) ~ 1, data = q4_100_250)
+```
+
+```{r}
+E <- q4_fit_50_100$n.risk*((q4_fit_50_100$n.event + q4_fit_100_250$n.event)/(q4_fit_50_100$n.risk + q4_fit_100_250$n.risk))
+
+V <- E*((q4_fit_50_100$n.risk + q4_fit_100_250$n.risk - q4_fit_50_100$n.event - q4_fit_100_250$n.event)/(q4_fit_50_100$n.risk + q4_fit_100_250$n.risk))*(q4_fit_100_250$n.risk/(q4_fit_50_100$n.risk + q4_fit_100_250$n.risk - 1))
+
+Z <- sum(q4_fit_50_100$n.event - E)/sqrt(sum(V))
+
+Z
+```
+
