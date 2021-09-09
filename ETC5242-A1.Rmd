@@ -88,10 +88,6 @@ The Kaplan-Meier curve for the full data and company size of 50-100 are very sim
 
 For all of the company regardless of their sizes, they all have a rapid churned decrease for the first 4 months, and come with a flatter churned from month 6 to month 8. Next, a drop at the end of the time at month 12 except for self-employed company. For self-employed company, the survival probability stays around 50% in month 6. As there are no customers churned after month 6, there is a flat line shown in the graph.
 
-
-
-
-
 # Question 2
 
 ## Compute the Kaplan-Meir curve and use this to estimate the median churn time.
@@ -292,7 +288,7 @@ The outcome of the analysis shows that the p value is extremely small which is s
 ## fit a Weibull distribution to the survival data to estimate the mean and the median of the churn time for each company size
 
 ```{r}
-fit_q5 <- function(dat){
+function_fit <- function(dat){
   fit <- survreg(Surv(months_active, churned) ~ 1, data = dat, dist = "weibull" )
   rweibull_shape <- 1 / fit$scale ## Approximately 3
   rweibull_scale <- exp(coef(fit)) ## approximately 7
@@ -317,5 +313,9 @@ names(weibull) <- c("company_size", "median", "mean")
 
 kable(weibull, caption = "Estimated mean and the median of the churn time for each company size with Weibull distribution") %>% 
   kable_styling(c("hover", "striped"))
+```
+
+```{r}
+
 ```
 
