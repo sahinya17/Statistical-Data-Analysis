@@ -257,6 +257,8 @@ test1[[1]]
 t.test(outcome~treatment)
 ```
 
+The outcome of the analysis shows that the p value is extremely small which is statistically significant. It points out the strong evidence against the null hypothesis. Therefore, the churn rate is significantly different between these two company sizes. Additionally, for the permutation distribution, we can figure out from the graph above that it is normally distributed with the mean of 0.
+
 # Question 5
 
 ## fit a Weibull distribution to the survival data to estimate the mean and the median of the churn time for each company size
