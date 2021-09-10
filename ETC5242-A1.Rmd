@@ -282,6 +282,10 @@ kable(time_50_100_CIs,
 
 ## Compute simultaneous coverage for the entire survival function.
 
+```{r}
+
+```
+
 
 
 # Question 4
