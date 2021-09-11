@@ -269,7 +269,7 @@ upper <- q3_fit$surv + quantile(bias_time$delta, 0.95)
 Month <- c(1:11)
 
 time_50_100_CIs <- data.frame(Month, q3_fit$surv, lower, upper) %>%
-  rename("Probability" = q3_fit.surv,
+  rename("Coverage" = q3_fit.surv,
          "Lower Confidence Interval" = lower, 
          "Upper Confidence Interval" = upper) 
 
@@ -278,12 +278,6 @@ kable(time_50_100_CIs,
       survival curve at each time for company size 50-100") %>% 
   kable_styling(c("hover", "striped"))%>%
   row_spec(1:11, color = "black", background = "#e6f0ed") 
-```
-
-## Compute simultaneous coverage for the entire survival function.
-
-```{r}
-
 ```
 
 
@@ -361,30 +355,79 @@ function_fit <- function(dat){
 median <- rweibull_scale*log(2)^(1/rweibull_shape)
 mean <- rweibull_scale*gamma(1+(1/rweibull_shape))
 
-return(c(median, mean))
+return(c(rweibull_shape, rweibull_scale, median, mean))
   
 }
 ```
 
 ```{r, message = FALSE, warning = FALSE}
 weibull <- data_frame(company_size = character(),
+                      shape = double(),
+                      scale = double(),
                       median = double(),
-                      mean = double())
+                      mean = double(),
+                      size = double())
 for (size in unique(churn_dat$company_size)){
   temp_data <- churn_dat %>% filter(company_size == size)
   return_values <- function_fit(temp_data)
   weibull <- rbind(weibull,
-                   c(size, round(return_values[1], 2),
-                     round(return_values[2],2)))
+                   c(size, 
+                     round(return_values[1],2), 
+                     round(return_values[2],2),
+                     round(return_values[3], 2),
+                     round(return_values[4],2),
+                     nrow(temp_data)))
 }
 
-names(weibull) <- c("company_size", "median", "mean")
+names(weibull) <- c("company_size", "shape", "scale", "median", "mean", "data_size")
 
 kable(weibull, 
 caption = "Estimated mean and the median of
       the churn time for each company size with Weibull distribution") %>% 
   kable_styling(c("hover", "striped"))%>%
   row_spec(1:5, color = "black", background = "#e6f0ed") 
+```
+
+
+```{r, message = FALSE, warning = FALSE}
+parametric_bootstrap_mean <- function(shape, scale, mean, total_size){
+  bootstrap_simulation <- tibble(exp = rep(1:5000, each = total_size),
+                      ystar = rweibull(5000 * total_size, shape = shape, scale = scale))
+  bias <- bootstrap_simulation %>%
+    group_by(exp) %>%
+    summarise(delta = mean - mean(ystar))
+  conf_int <- mean + quantile(bias$delta, c(0.05, 0.95))
+  return(conf_int)
+}
+
+parametric_bootstrap_median <- function(shape, scale, median, total_size){
+  bootstrap_simulation <- tibble(exp = rep(1:5000, each = total_size),
+                      ystar = rweibull(5000 * total_size, shape = shape, scale = scale))
+  bias <- bootstrap_simulation %>%
+    group_by(exp) %>%
+    summarise(delta = median - median(ystar))
+  conf_int <- median + quantile(bias$delta, c(0.05, 0.95))
+  return(conf_int)
+}
+```
+
+```{r, message = FALSE, warning = FALSE}
+weibull_ci <- data_frame (company_size = character(), type = character(), upper_ci  = numeric(), lower_ci = numeric())
+for (i in 1:nrow(weibull)){
+  result_mean <- parametric_bootstrap_mean(as.numeric(weibull$shape[i]), as.numeric(weibull$scale[i]), as.numeric(weibull$mean[i]), as.numeric(weibull$data_size[i]))
+
+  result_median <- parametric_bootstrap_median(as.numeric(weibull$shape[i]), as.numeric(weibull$scale[i]), as.numeric(weibull$median[i]), as.numeric(weibull$data_size[i]))
+
+  weibull_ci <- rbind(weibull_ci, c(weibull$company_size[i], "mean", result_mean[2], result_mean[1]))
+  weibull_ci <- rbind(weibull_ci, c(weibull$company_size[i], "median", result_median[2], result_median[1]))
+}
+  
+names(weibull_ci) <- c("Company Size", "Type", "Upper CI", "Lower CI")
+
+kable(weibull_ci, 
+caption = "Estimated mean and the median confidence intervals for weibull distribution") %>% 
+  kable_styling(c("hover", "striped")) 
+
 ```
 
 + The mean and median estimates derived from the weibull distribution are different from the estimates obtained using the Kaplan-Meier model. There is a increase by 0.5 to 1 in the values produced in this model, whereas the values given by the Kaplan-Meier model are lower.
