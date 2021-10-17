@@ -234,7 +234,6 @@ kable(time_50_100_CIs,
 ## Compute simultaneous coverage for the entire survival function.
 
 
-
 # Question 4
 
 ## Write a function to compute the log-rank test statistic for two populations.
@@ -315,7 +314,4 @@ kable(weibull, caption = "Estimated mean and the median of the churn time for ea
   kable_styling(c("hover", "striped"))
 ```
 
-```{r}
-
-```
 
