@@ -1,0 +1,262 @@
+---
+title: "a2"
+author: "Xinyi Cui"
+date: "10/17/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(printr)
+library(tidyverse)
+library(tidymodels)
+library(broom)
+library(splines)
+library(dagitty)
+library(ggdag)
+```
+
+
+```{r}
+A2 <- read.csv("https://raw.githubusercontent.com/avinash-vijai23/ETC2420-Assignment2/main/neonatal_mortality.csv") %>% 
+  mutate(r = nmr/(u5mr - nmr),
+         logr = log(r),
+         t = year - min(year),
+         logu5 = log(u5mr)) %>% 
+  select(-c(year,r, u5mr))
+```
+
+```{r}
+# Q1 part1
+A2_split <- initial_split(A2, strate = region)
+A2_training <- training(A2_split)
+A2_test <- testing(A2_split)
+
+# choice of variables
+fit_1 <- lm(logr ~ logu5 + region + t, A2_training) %>% 
+  tidy() %>% 
+  mutate(model = "full")
+
+fit_2 <- lm(logr ~ logu5 + t, A2_training) %>% 
+  tidy() %>% 
+  mutate(model = "u_t")
+
+fit_3 <- lm(logr ~ logu5 + region, A2_training) %>% 
+  tidy() %>% 
+  mutate(model = "u_r")
+
+fit_4 <- lm(logr ~ region + t, A2_training) %>% 
+  tidy() %>% 
+  mutate(model = "r_t")
+
+fit_5 <- lm(logr ~ logu5, A2_training) %>% 
+  tidy() %>% 
+  mutate(model = "u")
+
+fit_6 <- lm(logr ~ region, A2_training) %>% 
+  tidy() %>% 
+  mutate(model = "r")
+
+fit_7 <- lm(logr ~ t, A2_training) %>% 
+  tidy() %>% 
+  mutate(model = "t")
+
+# full model
+all_model <- fit_1 %>% 
+  full_join(fit_2) %>% 
+  full_join(fit_3) %>% 
+  full_join(fit_4) %>% 
+  full_join(fit_5) %>% 
+  full_join(fit_6) %>% 
+  full_join(fit_7) %>% 
+  mutate(lower = estimate - 1.96*std.error,
+         upper = estimate + 1.96*std.error)
+
+all_model %>% ggplot(aes(estimate, y = model)) +
+  geom_errorbar(aes(xmin = lower, xmax = upper)) +
+  geom_vline(aes(xintercept = 0),
+             linetype = "dashed",
+             size = 1) +
+  facet_wrap(.~term, scale = "free_x") +
+  scale_y_discrete(limits = c("full", "u_t", "u_r", "r_t", "u", "r", "t"))
+
+# relationship between each variable
+dagify(nmr ~ t,
+       nmr ~ Region,
+       nmr ~ u5mr,
+       Region ~ u5mr,
+       t ~ u5mr) %>% 
+  ggdag()+
+  theme_dag()
+
+# Final model
+fit0 <- lm(logr ~ logu5 + logu5*region + logu5*t, A2_training)
+summary(fit0)
+```
+
+logu5*region significant
+
+```{r}
+#Q1 part2
+# all data
+fit0 %>% 
+  augment(data = A2_training) %>% 
+  ggplot(aes(x = logu5, y= logr)) +
+  geom_point()+
+  geom_line(aes(x = logu5, y = .fitted), color = "blue")
+  
+```
+
+```{r}
+# different region
+fit0 %>% 
+  augment(data = A2_training) %>% 
+  ggplot(aes(x = logu5, y= logr)) +
+  geom_point()+
+  geom_line(aes(x = logu5, y = .fitted), color = "blue")+
+  facet_wrap(~region, scale = "free")
+```
+
+```{r}
+# 3 countries
+A2_training %>% 
+  count(country_name) %>% 
+  top_n(3)
+```
+
+```{r}
+# 3 countries
+fit0 %>% augment(data = A2_training) %>% 
+  filter(country_name %in% c("Bangladesh", "Peru", "Senegal")) %>% 
+  ggplot(aes(x = logu5, y = logr)) +
+  geom_point() +
+  geom_line(aes(x = logu5, y = .fitted), color = "blue") +
+  facet_wrap(~country_name, scales = "free")
+```
+
+
+
+```{r}
+#Q1 part3
+# estimate the root mean square error and absolute error 
+lm_pred <- tibble(pred = predict(fit0, A2_test))
+lm_pred <- bind_cols(A2_test, lm_pred)
+lm_pred %>% 
+  metrics(truth = logr,
+          estimate = pred)
+```
+
+```{r}
+#Q1 part 4 
+# prediction
+A2_PI <- as_tibble(predict(fit0, A2_test, interval = "prediction")) %>% 
+  bind_cols(lm_pred)
+
+A2_PI %>% 
+  ggplot(aes(x = logu5, y = logr))+
+  geom_point()+
+  geom_line(aes(y = lwr), linetype = "dashed")+
+  geom_line(aes(y = upr), linetype = "dashed")
+```
+
+```{r}
+#non-linear
+
+fit_test <- lm(log(nmr) ~ t +logu5 +region +logu5*t, data = A2_training)
+
+lm_pred_test <- tibble(pred = predict(fit_test, A2_test))
+
+lm_pred_test <- bind_cols(A2_test, lm_pred_test)
+
+```
+
+
+```{r}
+# all data
+bb <- A2_PI <- as_tibble(predict(fit_test, A2_test, interval = "prediction")) %>% 
+  bind_cols(lm_pred) %>% 
+  mutate(n_lwr = exp(lwr),
+         n_upr = exp(upr))
+
+bb %>% 
+  ggplot(aes(x = logu5, y = nmr))+
+  geom_point()+
+  geom_line(aes(y = n_lwr), linetype = "dashed") +
+  geom_line(aes(y = n_upr), linetype = "dashed")
+```
+```{r}
+# by region
+bb %>% 
+  ggplot(aes(x = logu5, y = nmr))+
+  geom_point()+
+  geom_line(aes(y = n_lwr), linetype = "dashed") +
+  geom_line(aes(y = n_upr), linetype = "dashed")+
+  facet_wrap(~ region, scale = "free")
+```
+
+```{r}
+#non-linear variable
+
+fit0 <- lm(logr ~ logu5 + logu5*region + logu5*t, A2_training)
+
+
+ggplot(A2_training)+
+  geom_point(aes(x = logu5, y = logr))
+
+
+fit_bs <- lm(logr ~ bs(logu5, df= 15) + logu5*region + logu5*t, data = A2_training)
+```
+
+```{r}
+# root mean sqaure error and mean absolute error
+
+lm_pred_bs <- tibble(pred = predict(fit_bs, A2_test))
+
+lm_pred_bs <- bind_cols(A2_test, lm_pred_bs)
+
+lm_pred_bs %>% 
+  metrics(truth = logr,
+          estimate = pred)
+
+```
+
+```{r}
+fit_bs %>% 
+  augment(data = A2_training) %>% 
+  ggplot(aes(x = logu5, y = logr)) +
+  geom_point()+
+  geom_line(aes(x = logu5, y = .fitted), color = "blue")+
+  facet_wrap(~ region, scale = "free")
+```
+
+
+
+```{r}
+#cross validation
+
+folds <- vfold_cv(A2, v= 20)
+
+spec <- linear_reg() %>% 
+  set_engine("lm")
+
+fits_cv <- fit_resamples(spec,
+                         logr ~ bs(logu5, df =15)+ bs(logu5, df =15)*region + bs(logu5, df =15)*t,
+                         resamples = folds
+)
+
+# find mean
+collect_metrics(fits_cv)
+```
+
+
+
+
+
+
+
+
+
+
