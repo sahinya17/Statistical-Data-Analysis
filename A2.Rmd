@@ -115,6 +115,9 @@ full_model %>% ggplot(aes(estimate, y = model)) +
 
 ```
 
+We have fitted seven models in total and the error bar graph represents the significance of each variable.
+The time variable is considered to be significant among all models under the 95% confidence interval as both the maximum and the minimum are different from 0. Similarly, variables such as region, and u5mr can also be considered as significant. However, while looking at the region_time model which represents the interaction effect between region and time, we can see that the shifts from the region model are only significant for High income and Latin American region; and therefore, the interaction effect should not be used here. Simultaneously, the u5mr_time model and the u5mr_region model both show insignificance as they are not too different from 0. To sum up, u5mr affects region while no effect for the opposite, and u5mr is significant among all the models and its’ significance levels are not changed if adding the time interaction on.
+
 ```{r, fig.width=5, fig.height=5}
 
 # understanding relationship between the variables
@@ -134,7 +137,7 @@ fit <- lm(transformed_nmr ~ u5mr_log + u5mr_log*region + u5mr_log*time, nmr_trai
 summary(fit)
 ```
 
-u5mr_log*region significant
+nmr is the dependent variable. From the dag graph we can see that both time and region is piped. We do not want to add them, cause they will end up worth lessed effect which removes the correlation between u5m4 and nmr because we are adding bias through time and region. u5mr is a fork therefore we consider to include it. Moreover, from the error bar we see the indirect affect to u5mr and time, therefore, to consider the interaction effect, we include u5mr\*region and u5mr*time.
 
 ### Task 1.1.2: Assess your linear model and comment on its fit. This should be done a) for all data simultaneously; b)for data in each region; and c) for data in a maximum of 3 countries that should be chosen to highlight different aspects of the fit diagnostics.
 
@@ -167,12 +170,6 @@ augment_fit %>%
 
 ```{r}
 # part c
-
-top3 <- nmr_data %>% filter(region %in% c("Central Europe, Eastern Europe, Central Asia", "High income", "Southeast Asia, East Asia and Oceania")) %>% 
-  group_by(country_name) %>% 
-  summarise(count_europe_asia = n()) %>% 
-  arrange(desc(count_europe_asia)) %>% head(3)
-           
 augment_fit %>%
   filter(country_name %in% c("India", "Japan", "Australia")) %>%
   ggplot(aes(x = u5mr_log, y = transformed_nmr)) +
@@ -183,6 +180,8 @@ augment_fit %>%
   xlab("Under 5 mortality rate in Log scale") +
   ylab("Fit")
 ```
+
+ We choose India, Australia and Japan to highlight different aspects of the fit. Australia and Japan both are developed countries, and India is a developing country. For Australia and Japan, they fit terribly for the model, especially Japan, non of the points are on the model. On contrast, India fits better than the other two countries.
 
 ### Task 1.1.3: Estimate the root mean square error and the mean absolute error on a test set. The test set should be produced using the argument strata = region.
 
@@ -202,23 +201,162 @@ lm_pred %>%
 
 ```{r}
 # Prediction for all data simultaneously
-A2_PI <- as_tibble(predict(fit, nmr_test, interval = "prediction")) %>% 
+linear_prediction  <- as_tibble(predict(fit, nmr_test, interval = "prediction")) %>% 
   bind_cols(lm_pred)
 
-A2_PI %>% 
+linear_prediction  %>% 
+  ggplot(aes(x = u5mr_log, y = transformed_nmr))+
+  geom_point(color = "#287ad1")+
+  geom_line(aes(y = lwr), color = "#d12828")+
+  geom_line(aes(y = upr), color = "#d12828") +
+  theme(panel.background = element_rect(fill = "#fff6ba")) +
+  xlab("Under 5 mortality rate in Log scale") +
+  ylab("Neonatal mortality rate")
+
+#  Prediction for region
+linear_prediction %>%
   ggplot(aes(x = u5mr_log, y = transformed_nmr))+
   geom_point()+
-  geom_line(aes(y = lwr), linetype = "dashed")+
-  geom_line(aes(y = upr), linetype = "dashed")
+  geom_line(aes(y = lwr)) +
+  geom_line(aes(y = upr))+
+  facet_wrap(~ region, scale = "free")
+
+#  Prediction for 3 Countires
+ linear_prediction %>%
+  filter(country_name %in% c("India", "Japan", "Australia")) %>% 
+  ggplot(aes(x = u5mr_log, y = transformed_nmr))+
+  geom_point()+
+  geom_line(aes(y = lwr)) +
+  geom_line(aes(y = upr))+
+  facet_wrap(~ country_name, scale = "free")
+```
+
+## Task 1.2: Non-linear Regression
+
+### Task 1.2.1: Explain your choice of model, using appropriate visualisations to support your choice. 
+
+```{r}
+#non-linear variable
+
+#non-linear variable part1 choose variable
+
+
+# find which variables have non-linear relationship
+#logu5 and logr non linear relationship
+ggplot(nmr_train)+
+  geom_point(aes(x = u5mr_log, y = transformed_nmr), color = "#5905f5")+
+  theme(panel.background = element_rect(fill = "#f0fcfc")) +
+  xlab("Under 5 mortality rate in Log scale") +
+  ylab("Neonatal Mortality Rate in Log Scale")
+
+#time and logr, no non-linear relationship
+ggplot(nmr_train)+
+  geom_point(aes(x = time, y = transformed_nmr), color = "#5905f5")+
+  theme(panel.background = element_rect(fill = "#f0fcfc")) +
+  xlab("Years") +
+  ylab("Neonatal Mortality Rate in Log Scale")
+
+#region and logr, no non-linear
+ggplot(nmr_train)+
+  geom_point(aes(y = region, x = transformed_nmr), color = "#5905f5")+
+  theme(panel.background = element_rect(fill = "#f0fcfc")) +
+  ylab("Region") +
+  xlab("Neonatal Mortality Rate in Log Scale")
+
+# non-linear model
+fit_non_linear <- lm(transformed_nmr ~ bs(u5mr_log, df= 15) + u5mr_log*region + u5mr_log*time, data = nmr_train)
+  
+```
+
+
+### Task 1.2.2: Use cross-validation to select an appropriate number of basis functions for bs()
+
+```{r}
+#NOT DONE
 ```
 
 
 
 
+### Task 1.2.3: For your final model, assess your linear model and comment on its fit. This should be done a) for all data simultaneously; b) for data in each region; and c) for data in a maximum of 3 countries that should be chosen to highlight different aspects of the fit diagnostics.
+```{r}
+# non-linear all
+augment_non_linear <- fit_non_linear %>% 
+  augment(data = nmr_train) 
+
+
+augment_non_linear %>% 
+  ggplot(aes(x = u5mr_log, y = transformed_nmr)) +
+  geom_point()+
+  geom_line(aes(x = u5mr_log, y = .fitted), color = "blue")
+
+#non- linear region
+augment_non_linear %>% 
+  ggplot(aes(x = u5mr_log, y = transformed_nmr)) +
+  geom_point()+
+  geom_line(aes(x = u5mr_log, y = .fitted), color = "blue")+
+  facet_wrap(~ region, scale = "free")
+
+# 3 countries
+augment_non_linear %>%
+  filter(country_name %in% c("India", "Japan", "Australia")) %>%
+  ggplot(aes(x = u5mr_log, y = transformed_nmr)) +
+  geom_point(color = "#126d7a") +
+  geom_line(aes(x = u5mr_log, y = .fitted), color = "#ff8400") +
+  facet_wrap(~country_name, scales = "free") +
+  theme(panel.background = element_rect(fill = "#c3d3eb")) +
+  xlab("Under 5 mortality rate in Log scale") +
+  ylab("Fit")
+
+```
 
 
 
+### Task 1.2.4: Estimate the root mean square error and the mean absolute error using the same test set as before.
+
+```{r}
+# Predict the test dataset
+lm_pred <- tibble(pred = predict(fit_non_linear, nmr_test))
+lm_pred <- bind_cols(nmr_test, lm_pred)
+lm_pred %>% 
+  metrics(truth = transformed_nmr,
+          estimate = pred) %>% 
+  kbl(booktabs = T) %>%
+  kable_styling(position = "center")
+```
 
 
+### Task 1.2.5: Produce a prediction, with prediction intervals8, of the NMR on its natural scale (aka not on the log-scale) and plot these a) for all data simultaneously; b) for data in each region; and c) for data in a maximum of 3 countries that show different aspects of the fit.
 
+```{r}
+# Prediction for all data simultaneously
+non_linear_prediction <- as_tibble(predict(fit_non_linear, nmr_test, interval = "prediction")) %>% 
+  bind_cols(lm_pred)
+
+non_linear_prediction %>% 
+  ggplot(aes(x = u5mr_log, y = transformed_nmr))+
+  geom_point(color = "#287ad1")+
+  geom_line(aes(y = lwr), color = "#d12828")+
+  geom_line(aes(y = upr), color = "#d12828") +
+  theme(panel.background = element_rect(fill = "#fff6ba")) +
+  xlab("Under 5 mortality rate in Log scale") +
+  ylab("Neonatal mortality rate")
+
+#  Prediction for region
+non_linear_prediction %>%
+  ggplot(aes(x = u5mr_log, y = transformed_nmr))+
+  geom_point()+
+  geom_line(aes(y = lwr)) +
+  geom_line(aes(y = upr))+
+  facet_wrap(~ region, scale = "free")
+
+#  Prediction for 3 Countires
+ non_linear_prediction %>%
+  filter(country_name %in% c("India", "Japan", "Australia")) %>% 
+  ggplot(aes(x = u5mr_log, y = transformed_nmr))+
+  geom_point()+
+  geom_line(aes(y = lwr)) +
+  geom_line(aes(y = upr))+
+  facet_wrap(~ country_name, scale = "free")
+```
 
