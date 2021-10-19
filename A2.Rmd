@@ -9,6 +9,7 @@ output: html_document
 
 ```{r setup, include=TRUE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+options(digits = 2)
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
@@ -24,6 +25,8 @@ library(ggdag)
 library(knitr)
 library(gtsummary)
 library(kableExtra)
+
+options(scipen = 100000)
 ```
 
 # Task 1: Estimating Neonatal Mortality
@@ -111,7 +114,8 @@ full_model %>% ggplot(aes(estimate, y = model)) +
              color = "steel blue") +
   facet_wrap(.~term, scale = "free_x") +
   scale_y_discrete(limits = c("all", "u5mr_region", "u5mr_time", "region_time", "region", "u5mr", "time"))+ 
-  theme(panel.background = element_rect(fill = "linen"), legend.position = "none", text = element_text(size=25))
+  theme(panel.background = element_rect(fill = "linen"), legend.position = "none", text = element_text(size=25), plot.title = element_text(hjust = 0.5)) +
+  ggtitle("Significance of each variable in the model")
 
 ```
 
@@ -124,7 +128,6 @@ For u5mr_region model, if we only consider u5mr or region, individually they are
 For u5mr_time model, as we mentioned before, u5mr itself is significant, while adding time, the significance level have not changed. However, when it is conditional on u5mr, time have been affected from positive values to negative significance values shown in graph t. Therefore, time u5mr will affect time. We also consider this is significant. 
 
 
-
 ```{r, echo = TRUE, message = FALSE, warning = FALSE, fig.width=5, fig.height=5}
 
 # understanding relationship between the variables
@@ -135,7 +138,9 @@ dagify(nmr ~ u5mr,
        Region ~ u5mr
        ) %>% 
   ggdag_adjust(node_size = 20) +
-  theme_dag(legend.position = "none") 
+  theme_dag(legend.position = "none") +
+  ggtitle("Relationship between the variables") + 
+  theme(plot.title = element_text(hjust = 0.5))
   
 
 # Fitting the model using the training data (with the interactive effect)
@@ -155,13 +160,28 @@ augment_fit %>%
   ggplot() +
   geom_point(aes(x = u5mr_log, y= transformed_nmr), color = "#1b9ce3")+
   geom_line(aes(x = u5mr_log, y = .fitted), color = "#ffda85") +
-  theme(panel.background = element_rect(fill = "#cae6da"), text = element_text(size=15)) +
+  theme(panel.background = element_rect(fill = "#cae6da"), text = element_text(size=15),
+        plot.title = element_text(hjust = 0.5)) +
   xlab("Under 5 mortality rate in Log scale") +
-  ylab("Neonatal Mortality Rate in Log Scale")
+  ylab("Neonatal Mortality Rate in Log Scale") +
+  ggtitle("Linear model for all data simulatenously")
   
 ```
 
 The fitted model fits fairly well with all the data simultaneously, as we can see from the graph that the fitted model and the actual data mostly overlap with each other.  
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, fig.width=8}
+augment_fit %>% 
+  ggplot(aes(sample=.resid/.sigma)) +
+  geom_qq()+
+  geom_abline(intercept=0, slope = 1) +
+  theme(panel.background = element_rect(fill = "#cae6da"),
+        plot.title = element_text(hjust = 0.5)) +
+  ggtitle("QQ Plot for all data")
+  
+```
+
+From the QQ-Plot, it can be observed that there is a heavy right tail which is common in log scaled variables. The normality does not equal 1. 
 
 ```{r, echo = TRUE, message = FALSE, warning = FALSE, fig.width=20, fig.height=15}
 # Part b: For data in each region
@@ -170,13 +190,28 @@ augment_fit %>%
   geom_point(aes(x = u5mr_log, y= transformed_nmr), color = "#7c9154")+
   geom_line(aes(x = u5mr_log, y = .fitted), color = "#ffda85")+
   facet_wrap(~region, scale = "free") +
-  theme(panel.background = element_rect(fill = "#f0fcfc"), text = element_text(size=25)) +
+  theme(panel.background = element_rect(fill = "#f0fcfc"), text = element_text(size=25),
+        plot.title = element_text(hjust = 0.5)) +
   xlab("Under 5 mortality rate in Log scale") +
-  ylab("Neonatal Mortality Rate in Log Scale")
+  ylab("Neonatal Mortality Rate in Log Scale") +
+  ggtitle("Linear model for each region")
 ```
 
 
 Similarly, the fitted model works well with data in each region as well, especially for high income countries and Latin America and Caribbean.
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, fig.width=8}
+augment_fit %>% 
+  ggplot(aes(sample=.resid/.sigma)) +
+  geom_qq()+
+  geom_abline(intercept=0, slope = 1) +
+  facet_wrap(~region, scale = "free") +
+  theme(panel.background = element_rect(fill = "#f0fcfc"),
+        plot.title = element_text(hjust = 0.5)) +
+  ggtitle("QQ Plot for each region")
+```
+
+All regions except for South Asia, all other regions have a common distribution. 
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
 # Part c: For data in a maximum of 3 countries that should be chosen to highlight different aspects of the fit diagnostics
@@ -186,12 +221,29 @@ augment_fit %>%
   geom_point(color = "#126d7a") +
   geom_line(aes(x = u5mr_log, y = .fitted), color = "#ff8400") +
   facet_wrap(~country_name, scales = "free") +
-  theme(panel.background = element_rect(fill = "#c3d3eb")) +
+  theme(panel.background = element_rect(fill = "#c3d3eb"),
+        plot.title = element_text(hjust = 0.5)) +
   xlab("Under 5 mortality rate in Log scale") +
-  ylab("Fit")
+  ylab("Fit") +
+  ggtitle("Linear model for data in India, Japan and Australia")
 ```
 
-We choose India, Australia and Japan to highlight different aspects of the fit. Australia and Japan both are developed countries, and India is a developing country. For Australia and Japan, they fit terribly for the model, especially Japan, non of the points are on the model. On contrast, India fits better than the other two countries.
+We choose India, Australia and Japan to highlight different aspects of the fit. Australia and Japan both are developed countries, and India is a developing country. For Australia and Japan, they fit terribly for the model, especially Japan, none of the points are on the model. On contrast, India fits better than the other two countries.
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, fig.width=8}
+augment_fit %>% 
+  filter(country_name %in% c("India", "Japan", "Australia")) %>% 
+  ggplot(aes(sample=.resid/.sigma)) +
+  geom_qq()+
+  geom_abline(intercept=0, slope = 1) +
+  facet_wrap(~country_name, scales = "free") +
+  theme(panel.background = element_rect(fill = "#f0fcfc"),
+        plot.title = element_text(hjust = 0.5)) +
+  ggtitle("QQ Plot for India, Japan, Australia")
+```
+
+The QQ-Plot shows that none of the countries show a common distribution. 
+
 
 ### Task 1.1.3: Estimate the root mean square error and the mean absolute error on a test set. The test set should be produced using the argument strata = region.
 
@@ -203,7 +255,8 @@ lm_pred <- bind_cols(nmr_test, lm_pred)
 lm_pred %>% 
   metrics(truth = transformed_nmr,
           estimate = pred) %>% 
-  kbl(booktabs = T) %>%
+  kbl(booktabs = T,
+      caption = "Mean absolute error, Root mean Square Error, R-squared value for the test set data") %>%
   kable_styling(position = "center")
 ```
 
@@ -212,8 +265,8 @@ According to Cornell Statistical Consulting Unit, RMSE is the square root of the
 
 ### Task 1.1.4: Produce a prediction, with prediction intervals, of the NMR on its natural scale (aka not on the log-scale) and plot these a) for all data simultaneously; b) for data in each region; and c) for data in a maximum of 3 countries that show different aspects of the fit.
 
-```{r echo = TRUE, message = FALSE, warning = FALSE}
 
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 fit_natural <- lm(nmr ~ u5mr_log + u5mr_log*region + u5mr_log*time, nmr_train)
 # Prediction for all data simultaneously
 linear_prediction  <- as_tibble(predict(fit_natural, nmr_test, interval = "prediction")) %>% 
@@ -224,10 +277,17 @@ linear_prediction  %>%
   geom_point(color = "#287ad1")+
   geom_line(aes(y = lwr), color = "#d12828")+
   geom_line(aes(y = upr), color = "#d12828") +
-  theme(panel.background = element_rect(fill = "#fff6ba")) +
+  theme(panel.background = element_rect(fill = "#fff6ba"),
+        plot.title = element_text(hjust = 0.5)) +
   xlab("Under 5 mortality rate in Log scale") +
-  ylab("Neonatal mortality rate")
+  ylab("Neonatal mortality rate") +
+  ggtitle("Prediction for all data simultaneously")
+```
 
+
+Surprisingly, putting NMR on a natural scale does not look really different from it is put on a log scale, only some values appear to be a little bit extreme. However, putting upper and lower values exclude these outliers.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 #  Prediction for region
 linear_prediction %>%
   ggplot(aes(x = u5mr_log, y = nmr))+
@@ -235,10 +295,16 @@ linear_prediction %>%
   geom_line(aes(y = lwr),color = "#d12828") +
   geom_line(aes(y = upr),color = "#d12828")+
   facet_wrap(~ region, scale = "free")+
-  theme(panel.background = element_rect(fill = "#fff6ba")) +
+  theme(panel.background = element_rect(fill = "#fff6ba"),
+        plot.title = element_text(hjust = 0.5)) +
   xlab("Under 5 mortality rate in Log scale") +
-  ylab("Neonatal mortality rate")
+  ylab("Neonatal mortality rate") +
+  ggtitle("Prediction for each region")
+```
 
+As for data in each region, Europe, High income countries, Latin America and Caribbean and Sub-Saharan Africa, the lower and upper scales contain most of the data, and the model performs well.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 #  Prediction for 3 Countires
  linear_prediction %>%
   filter(country_name %in% c("India", "Japan", "Australia")) %>% 
@@ -247,19 +313,13 @@ linear_prediction %>%
   geom_line(aes(y = lwr), color = "#d12828") +
   geom_line(aes(y = upr), color = "#d12828")+
   facet_wrap(~ country_name, scale = "free")+
-  theme(panel.background = element_rect(fill = "#fff6ba")) +
+  theme(panel.background = element_rect(fill = "#fff6ba"),
+        plot.title = element_text(hjust = 0.5)) +
   xlab("Under 5 mortality rate in Log scale") +
-  ylab("Neonatal mortality rate")
+  ylab("Neonatal mortality rate") +
+  ggtitle("Prediction for India, Japan and Australia")
 ```
 
-For all data
-Surprisingly, putting NMR on a natural scale does not look really different from it is put on a log scale, only some values appear to be a little bit extreme. However, putting upper and lower values exclude these outliers.
-
-
-For different regions
-As for data in each region, Europe, High income countries, Latin America and Caribbean and Sub-Saharan Africa, the lower and upper scales contain most of the data, and the model performs well.
-
-For 3 countries
 As for the countries, Australia, India and Japan, putting upper and lower scales looks like a better idea than the fit in the log scale, while for Japan, some outliers are still excluded.
 
 ## Task 1.2: Non-linear Regression
@@ -276,27 +336,29 @@ As for the countries, Australia, India and Japan, putting upper and lower scales
 #u5mr_log and transformed_nmr non linear relationship
 ggplot(nmr_train)+
   geom_point(aes(x = u5mr_log, y = transformed_nmr), color = "#5905f5")+
-  theme(panel.background = element_rect(fill = "#f0fcfc")) +
+  theme(panel.background = element_rect(fill = "#f0fcfc"),
+        plot.title = element_text(hjust = 0.5)) +
   xlab("Under 5 mortality rate in Log scale") +
-  ylab("Neonatal Mortality Rate in Log Scale")
+  ylab("Neonatal Mortality Rate in Log Scale") +
+  ggtitle("u5mr_log vs transformed_nmr")
 
 #time and transformed_nmr, no non-linear relationship
 ggplot(nmr_train)+
   geom_point(aes(x = time, y = transformed_nmr), color = "#5905f5")+
-  theme(panel.background = element_rect(fill = "#f0fcfc")) +
+  theme(panel.background = element_rect(fill = "#f0fcfc"),
+        plot.title = element_text(hjust = 0.5)) +
   xlab("Years") +
-  ylab("Neonatal Mortality Rate in Log Scale")
+  ylab("Neonatal Mortality Rate in Log Scale")+
+  ggtitle("Time vs transformed_nmr")
 
 #region and transformed_nmr, no non-linear
 ggplot(nmr_train)+
   geom_point(aes(y = region, x = transformed_nmr), color = "#5905f5")+
-  theme(panel.background = element_rect(fill = "#f0fcfc")) +
+  theme(panel.background = element_rect(fill = "#f0fcfc"),
+        plot.title = element_text(hjust = 0.5)) +
   ylab("Region") +
-  xlab("Neonatal Mortality Rate in Log Scale")
-
-# non-linear model
-fit_non_linear <- lm(transformed_nmr ~ bs(u5mr_log, df= 15) + u5mr_log*region + u5mr_log*time, data = nmr_train)
-  
+  xlab("Neonatal Mortality Rate in Log Scale") +
+  ggtitle("Region vs transformed_nmr")
 ```
 We first look for the variables with non-linear relationship. The first graph is u5mr_log and transformed_nmr, the second graph is time and transformed_nmr, the third is region and transformed_nmr, and it appears that only u5mr_log and transformed_nmr has non-linear relationship. We then fit a model with u5mr_log, u5mr_log\*region and u5mr_log*time.
 
@@ -305,58 +367,36 @@ We first look for the variables with non-linear relationship. The first graph is
 We use folds to split the data into groups.
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
+
+# non-linear model
+fit_non_linear <- lm(transformed_nmr ~ bs(u5mr_log, df= 15) + u5mr_log*region + u5mr_log*time, data = nmr_train)
+
+#fold data into groups
 folds <- vfold_cv(nmr_data , v = 20, strata = region)
-```
 
-Build the bs recipe.
-
-```{r echo = TRUE, message = FALSE, warning = FALSE}
+# create recipe
 bs_recipe <- recipe(transformed_nmr ~ u5mr_log + region + time,
               data = nmr_train) %>% 
   step_bs(u5mr_log, deg_free = tune()) %>% 
   step_dummy(region) %>% 
   step_interact(~starts_with("u5mr_log"):starts_with("region"))
-```
 
-Add the data recipe to the workflow.
-
-```{r echo = TRUE, message = FALSE, warning = FALSE}
+# add recipe to the workflow
 wf_bs <- workflow() %>%
   add_recipe(bs_recipe)
-```
 
-Set up a spec to find the value of $\lambda$ with the smallest average RMSE on the cross validation folds.
-
-```{r echo = TRUE, message = FALSE, warning = FALSE}
+# create spec
 spec <- linear_reg() %>%
   set_engine("lm")
-```
 
-Tune our model to find a good value of $\lambda$.
 
-```{r, echo = TRUE, message = FALSE, warning = FALSE, warning = FALSE}
 wf_lm <- wf_bs %>% 
   add_model(spec) 
 
 fit_lm <- wf_lm %>%
-  tune_grid(resamples = folds
-)
+  tune_grid(resamples = folds)
 ```
 
-Collect metrics and put them to visualize:
-
-```{r echo = TRUE, message = FALSE, warning = FALSE}
-fit_lm %>% collect_metrics() %>% 
-  ggplot(aes(x = deg_free, y = mean, 
-             colour = .metric)) +
-  geom_errorbar(aes(ymin = mean - std_err, 
-                    ymax = mean + std_err), 
-                alpha = 0.5) +
-  geom_line() +
-  facet_wrap(~.metric, scales = "free", nrow = 2) +
-  scale_x_log10() +
-  theme(legend.position = "none")
-```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
 lowest_rmse <- fit_lm %>% 
@@ -364,6 +404,8 @@ lowest_rmse <- fit_lm %>%
 
 lowest_rmse %>% knitr::kable()
 ```
+
+We used cross-validation to select an appropriate number of basis functions for bs(), we first split the data into groups by folds, then create recipes and add it to the workflow. In addition, we set up a spec to discover the value of lambda with the smallest average root square error.From the visualization of the error bar we find the lowest root mean square error to select the degree of freedom to be 8.
 
 ### Task 1.2.3: For your final model, assess your linear model and comment on its fit. This should be done a) for all data simultaneously; b) for data in each region; and c) for data in a maximum of 3 countries that should be chosen to highlight different aspects of the fit diagnostics.
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
@@ -375,8 +417,24 @@ augment_non_linear <- fit_non_linear %>%
 augment_non_linear %>% 
   ggplot(aes(x = u5mr_log, y = transformed_nmr)) +
   geom_point()+
-  geom_line(aes(x = u5mr_log, y = .fitted), color = "blue")
+  geom_line(aes(x = u5mr_log, y = .fitted), color = "blue")+
+  theme(panel.background = element_rect(fill = "#f0fcfc"),
+        plot.title = element_text(hjust = 0.5)) +
+  ggtitle("Non-linear model for all data simultaneously")
 
+augment_non_linear %>% 
+  ggplot(aes(sample=.resid/.sigma)) +
+  geom_qq()+
+  geom_abline(intercept=0, slope = 1) +
+  theme(panel.background = element_rect(fill = "#f0fcfc"),
+        plot.title = element_text(hjust = 0.5)) +
+  ggtitle("QQ Plot for all data in non-linear model")
+```
+
+For the non-linear model, fitting the whole data simultaneously looks really similar to the linear model, both of them are good fit. Since the tails in QQ-Plot are not overlapping with the line, it indicates that the data has more extreme values than the values that would be obtained from a normal distribution. 
+
+
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 #non- linear region
 augment_non_linear %>% 
   ggplot(aes(x = u5mr_log, y = transformed_nmr)) +
@@ -384,6 +442,19 @@ augment_non_linear %>%
   geom_line(aes(x = u5mr_log, y = .fitted), color = "blue")+
   facet_wrap(~ region, scale = "free")
 
+augment_non_linear %>% 
+  ggplot(aes(sample=.resid/.sigma)) +
+  geom_qq()+
+  geom_abline(intercept=0, slope = 1) +
+  facet_wrap(~ region, scale = "free") + 
+  theme(panel.background = element_rect(fill = "#f0fcfc"),
+        plot.title = element_text(hjust = 0.5)) +
+  ggtitle("QQ Plot for each region in non-linear model")
+```
+
+As for the data in each region, non-linear model performs much better than the linear model. It catches all the trends for every region. Based on QQ-Plot, Latin America and Caribbean, Southeast Asia, East Asia and Oceania and South Asia has more extreme values and are not normally distributed. 
+
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 # 3 countries
 augment_non_linear %>%
   filter(country_name %in% c("India", "Japan", "Australia")) %>%
@@ -395,14 +466,19 @@ augment_non_linear %>%
   xlab("Under 5 mortality rate in Log scale") +
   ylab("Fit")
 
-```
-(a)
-For the non-linear model, fitting the whole data simultaneously looks really similar to the linear model, both of them are good fit.
-(b)
-As for the data in each region, non-linear model performs much better than the linear model. It catches all the trends for every region.
+augment_non_linear %>% 
+  filter(country_name %in% c("India", "Japan", "Australia")) %>% 
+  ggplot(aes(sample=.resid/.sigma)) +
+  geom_qq()+
+  geom_abline(intercept=0, slope = 1) +
+  facet_wrap(~country_name, scales = "free") +
+  theme(panel.background = element_rect(fill = "#f0fcfc"),
+        plot.title = element_text(hjust = 0.5)) +
+  ggtitle("QQ Plot for India, Japan, Australia in non-linear model")
 
-(c)
-The non-linear model apparently fits better than the linear model for Australia, India and Japan. Take Australia for example, the model catches log_u5mr around 2.0 to 2.5 better, most of the value at this range are lower than others, and the fit model follows this trend while it is the opposite for the linear model.
+```
+
+The non-linear model apparently fits better than the linear model for Australia, India and Japan. Take Australia for example, the model catches log_u5mr around 2.0 to 2.5 better, most of the value at this range are lower than others, and the fit model follows this trend while it is the opposite for the linear model. The predicted values differ largely from the observed values as shown in the QQ-Plot, as there are clearly some violations. 
 
 
 ### Task 1.2.4: Estimate the root mean square error and the mean absolute error using the same test set as before.
@@ -457,6 +533,10 @@ non_linear_prediction %>%
 
 
 Q3
+
+Introduction:
+
+In this section we wrote a function that uses the residual bootstrap to compute an 80% confidence interval for the LASSO estimate for each regression parameters also check the coverage of each of the intervals.
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
 #data
 set.seed(123)
@@ -588,12 +668,35 @@ return(ci)
 }
 ```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE}
-lasso(data, formula, n, n_sim)
+```{r}
+#check coverage
+
+coverage <- function(data, formula, n, n_sim,ci){
+  spec_lasso_tune <- linear_reg(penalty = tune(), mixture = 1) %>% 
+  set_engine("glmnet")
+  
+  lambda <- grid_regular(penalty(range = c(-10,10)),
+                         levels = 10)
+  
+  return(lambda)
+  
+}
 ```
 
 
-The modified residual bootstrap do not achieve the nominal coverage.
+```{r echo = TRUE, message = FALSE, warning = FALSE}
+lasso(data, formula, n, n_sim) %>% tidy() %>% 
+  kbl(booktabs = T,
+      caption = "80% confidence interval for Lasso") %>%
+  kable_styling(position = "center")
+
+coverage(data, formula, n, n_sim, ci) %>% 
+  kbl(booktabs = T,
+      caption = "Coverage check for each interval") %>%
+  kable_styling(position = "center")
+```
+
+The modified residual bootstrap does not achieve the nominal coverage.  
 
 
 
