@@ -1,9 +1,14 @@
 ---
 title: "ETC5242Assignment"
-author: "Sahinya Akila, Xinyi Cui, Pranali Angne, Janice Hsin Hsu"
+author: "Sahinya Akila(29201128) , Xinyi Cui(29645530), Pranali Angne(32355068), Janice Hsin Hsu(32195109)"
 date: "9/4/2021"
-output: pdf_document
+output:
+  bookdown::pdf_document2:
+    fig_caption: yes
+    toc: true
 ---
+
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -21,7 +26,10 @@ library(ggplot2)
 churn_dat <- read_csv("https://raw.githubusercontent.com/square/pysurvival/master/pysurvival/datasets/churn.csv")
 
 # Filtering data
-churn_dat <- churn_dat %>% filter(months_active > 0) %>% select(c(company_size, months_active, churned)) %>% na.omit()
+churn_dat <- churn_dat %>% 
+  filter(months_active > 0) %>% 
+  select(c(company_size, months_active, churned)) %>%
+  na.omit()
 ```
 
 # Question 1
@@ -36,7 +44,10 @@ km_model <- function(time, event){
     group_by(time, event) %>% 
     summarise(total_count = n()) %>% 
     ungroup() %>% 
-    pivot_wider(names_from = event, values_from = total_count, values_fill = 0, names_prefix = "status")
+    pivot_wider(names_from = event, 
+                values_from = total_count, 
+                values_fill = 0, 
+                names_prefix = "status")
 
 result <- data_frame(result = double())
 temp_val <- nrow(dataset)
@@ -56,43 +67,55 @@ names(dataset1) <- c("time", "status0", "status1", "survival")
 ```
 
 ## The Kaplan-Meier curve for the full data
-```{r , message = FALSE, warning = FALSE}
+```{r, message = FALSE, warning = FALSE, out.width = '80%', fig.cap= "Kaplan Meier Curve for the Survival Data"}
 km_survive <- km_model(churn_dat$months_active, churn_dat$churned) 
 
 km_survive %>% 
   ggplot(aes(time, survival)) +
   geom_step() +
-  ggtitle(label = "Kaplan Meier Curve for the Survival Data")
+  theme_linedraw() +
+  theme(panel.background = element_rect(fill = "linen"))
 ```
-The Kaplan Meier curve for the full data shows that the customers churned to 50% by month 5, and the probability slow down until month 10 and then decrease at the end of month 12.
+
++ The Kaplan Meier curve for the full data shows that the customers churned to 50% by month 5, and the probability slow down until month 10 and then decrease at the end of month 12.
 
 
 
 ## The Kaplan-Meier curve for each company_size
 
-```{r, message = FALSE, warning = FALSE}
-company_km_model <- data.frame(time = double(), survival = double(), company_size = character())
+```{r, message = FALSE, warning = FALSE, fig.cap="The Kaplan-Meier curve for each company_size"}
+company_km_model <- data.frame(time = double(),
+                               survival = double(), 
+                               company_size = character())
 for(size in unique(churn_dat$company_size)){
   filtered <- churn_dat %>% filter(company_size == size)
-  final_model <- km_model(filtered$months_active, filtered$churned) %>% mutate(company_size = size)
+  final_model <- km_model(filtered$months_active,
+                          filtered$churned) %>% 
+    mutate(company_size = size)
   company_km_model <- rbind(company_km_model, final_model)
 }
 
 company_km_model %>% 
   ggplot(aes(time, survival)) +
   geom_step() +
-  facet_wrap(~company_size)
+  facet_wrap(~company_size) + 
+  theme(plot.background = element_rect(fill = "white")) +
+  theme(panel.background = element_rect(fill = "#e3ebbc",
+                                colour = "black",
+                                size = 0.5, linetype = "solid"))
 ```
 
-The Kaplan-Meier curve for the full data and company size of 50-100 are very similar.
++ The Kaplan-Meier curve for the full data and company size of 50-100 are very similar.
 
-For all of the company regardless of their sizes, they all have a rapid churned decrease for the first 4 months, and come with a flatter churned from month 6 to month 8. Next, a drop at the end of the time at month 12 except for self-employed company. For self-employed company, the survival probability stays around 50% in month 6. As there are no customers churned after month 6, there is a flat line shown in the graph.
++ For all of the company regardless of their sizes, they all have a rapid churned decrease for the first 4 months, and come with a flatter churned from month 6 to month 8. Next, a drop at the end of the time at month 12 except for self-employed company.
+
++ For self-employed company, the survival probability stays around 50% in month 6. As there are no customers churned after month 6, there is a flat line shown in the graph.
 
 # Question 2
 
 ## Compute the Kaplan-Meir curve and use this to estimate the median churn time.
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE}
+```{r, message = FALSE, warning = FALSE, out.width="70%"}
 fit <- survfit(Surv(months_active, churned) ~ company_size,
                   data = churn_dat)
 
@@ -101,13 +124,16 @@ g2 <- ggsurvplot(fit,
                  conf.int = FALSE)
 
 g2$plot +
-  labs(x = "Months Active",
-       title = "Kaplan-Meir curve for each company size") +
-  theme(legend.position="bottom") 
+  labs(x = "Months Active") +
+  theme(legend.position="bottom") +
+  theme(plot.background = element_rect(fill = "white")) +
+  theme(panel.background = element_rect(fill = "#edf5f2",
+                                colour = "black",
+                                size = 0.5, linetype = "solid"))
 ```
 
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE}
+```{r, message = FALSE, warning = FALSE}
 median_function <- function(fit){
   index <- which.min(abs(fit$surv - 0.5))
   median <- fit$time[index]
@@ -116,7 +142,7 @@ median_function <- function(fit){
 ```
 
 
-```{r}
+```{r, message = FALSE, warning = FALSE}
 for (size in unique(churn_dat$company_size)){
   temp_data <- churn_dat %>% filter(company_size == size)
   name <- size
@@ -124,24 +150,26 @@ for (size in unique(churn_dat$company_size)){
 }
 ```
 
-```{r}
-company_median <- data_frame(company_size = unique(churn_dat$company_size), median = c(NA, NA, NA, NA, NA))
+```{r, message = FALSE, warning = FALSE}
+company_median <- data_frame(company_size = unique(churn_dat$company_size),
+                             median = c(NA, NA, NA, NA, NA))
 
 for (i in 1:length(company_median$company_size)){
   company_median$median[i] <- median_function(get(company_median$company_size[i]))
 }
 
 company_median %>%
-  knitr::kable(
-  caption = "Medians for different company sizes") %>%
-  kable_styling(c("hover", "striped"))
+  knitr::kable(caption = "Medians for different company sizes") %>%
+  kable_styling(c("hover", "striped")) %>% 
+  column_spec(1:2, bold = T) %>%
+  row_spec(1:5, color = "black", background = "#e9e6f0") 
 ```
 
 
 ## Use a non-parametric bootstrap to construct 90% confidence intervals for the median of each company size
 
 
-```{r}
+```{r, message = FALSE, warning = FALSE}
 bootstrapmedian <- function(df_median, df){
   bootstrap <- tibble(experiment = rep(1:1000, each = nrow(df)),
                         ind = sample(1:nrow(df), size = nrow(df)*1000, replace = TRUE),
@@ -150,42 +178,57 @@ bootstrapmedian <- function(df_median, df){
   
   bias <- bootstrap %>%
     group_by(experiment) %>%
-    summarise(delta = median_function(df_median) - median_function(survfit(Surv(timestar, churnstar) ~ experiment))) %>% na.omit()
+    summarise(delta = median_function(df_median) -
+                median_function(survfit(Surv(timestar,
+                                             churnstar) ~ experiment))) %>%
+    na.omit()
 
-  ci <- median_function(df_median) + quantile(bias$delta, c(0.05, 0.95))
+  ci <- median_function(df_median) + 
+    quantile(bias$delta, c(0.05, 0.95))
   
   return(ci)
 }
 ```
 
-```{r}
-company_median_ci <- data_frame(company_size = unique(churn_dat$company_size), median = c(NA, NA, NA, NA, NA), lci = c(NA, NA, NA, NA, NA), uci = c(NA, NA, NA, NA, NA))
+```{r,Tab2, message = FALSE, warning = FALSE}
+company_median_ci <- data_frame(company_size = unique(churn_dat$company_size), 
+                                median = c(NA, NA, NA, NA, NA),
+                                lci = c(NA, NA, NA, NA, NA),
+                                uci = c(NA, NA, NA, NA, NA))
 
 for (i in 1:length(company_median_ci$company_size)){
-  ci <- bootstrapmedian(get(company_median_ci$company_size[i]), churn_dat %>% filter(company_size == company_median_ci$company_size[i]))
+  ci <- bootstrapmedian(get(company_median_ci$company_size[i]),
+                        churn_dat %>% 
+                          filter(company_size == company_median_ci$company_size[i]))
   company_median_ci$median[i] <- median_function(get(company_median_ci$company_size[i]))
            company_median_ci$lci[i] <- ci[1]
            company_median_ci$uci[i] = ci[2]
-}
+} 
 company_median_ci %>%
-  knitr::kable(
-  caption = "estimated mean under 90% CI") %>%
-  kable_styling(c("hover", "striped"))
+  kbl() %>%
+  kable_styling(c("hover", "striped")) %>% 
+  column_spec(1:4, bold = T) %>%
+  row_spec(1:5, color = "black", background = "#e6f0ed") 
 ```
 
 ## Make a plot that shows that estimate of the median and the corresponding confidence interval on the same axes
 
-```{r}
+```{r, message = FALSE, warning = FALSE, out.width="70%"}
 ggplot(company_median_ci,
        aes(x = company_size,
            y = median,
-           colour = company_size)) + 
+           color = company_size)) + 
   geom_errorbar(aes(ymax = uci, ymin = lci)) +
   geom_point() +
   theme_bw() +
   labs(x = "Company Size",
        y = "Estimated Median Churn Time",
-       title = "estimated mean under 90% CI")
+       caption = "Estimated mean under 90% CI") + 
+  theme(plot.background = element_rect(fill = "white")) +
+  theme(panel.background = element_rect(fill = "#faedd9",
+                                colour = "black",
+                                size = 0.5, linetype = "solid"))
+  
 ```
 
 The table above demonstrates the median churn time estimated for different company size.
@@ -197,7 +240,7 @@ The table above demonstrates the median churn time estimated for different compa
 # Question 3
 
 ## Choose company size of 50-100
-```{r}
+```{r, message = FALSE, warning = FALSE}
 q3_company <- churn_dat %>% 
   filter(company_size == "50-100")
 
@@ -207,9 +250,11 @@ q3_fit <- survfit(Surv(months_active, churned) ~1,
 
 ## Use a nonparametric bootstrap to re-sample the data and construct 90% confidence intervals for the survival curve at each time.
 
-```{r}
+```{r, message = FALSE, warning = FALSE}
 bootstrap_time <- tibble(experiment = rep(1:1000, each =672),
-                        ind = sample(1:672, size = 672*1000, replace = TRUE),
+                        ind = sample(1:672, 
+                                     size = 672*1000, 
+                                     replace = TRUE),
                                     months_active = q3_company$months_active[ind],
                                     churned = q3_company$churned[ind])
 bias_time <- bootstrap_time %>% 
@@ -220,37 +265,42 @@ lower <- q3_fit$surv + quantile(bias_time$delta, 0.05)
 upper <- q3_fit$surv + quantile(bias_time$delta, 0.95)
 ```
 
-```{r}
+```{r, message = FALSE, warning = FALSE}
 Month <- c(1:11)
 
 time_50_100_CIs <- data.frame(Month, q3_fit$surv, lower, upper) %>%
-  rename("Probability" = q3_fit.surv, "Lower Confidence Interval" = lower, "Upper Confidence Interval" = upper) 
+  rename("Coverage" = q3_fit.surv,
+         "Lower Confidence Interval" = lower, 
+         "Upper Confidence Interval" = upper) 
 
-kable(time_50_100_CIs, 
-      caption = "90% confidence intervals for the survival curve at each time for company size 50-100") %>% 
-  kable_styling(c("hover", "striped"))
+kable(time_50_100_CIs,
+      caption = "90% confidence intervals for the 
+      survival curve at each time for company size 50-100") %>% 
+  kable_styling(c("hover", "striped"))%>%
+  row_spec(1:11, color = "black", background = "#e6f0ed") 
 ```
-
-## Compute simultaneous coverage for the entire survival function.
 
 
 # Question 4
 
 ## Write a function to compute the log-rank test statistic for two populations.
-```{r}
+```{r, message = FALSE, warning = FALSE}
 q4_comp <- churn_dat %>%
- mutate(comp_hyp = case_when(company_size == "50-100" ~ 1, company_size== "100-250" ~ 2, TRUE ~ 0))
+ mutate(comp_hyp = case_when(company_size == "50-100" ~ 1,
+                             company_size== "100-250" ~ 2, 
+                             TRUE ~ 0))
 
 q4_comp <- q4_comp %>%
   filter(comp_hyp == 1| comp_hyp == 2)
 ```
 
 ```{r}
-survdiff(Surv(months_active, churned) ~ comp_hyp, data=q4_comp)
+survdiff(Surv(months_active, churned) ~ comp_hyp,
+         data=q4_comp)
 ```
 
 
-```{r}
+```{r, message = FALSE, warning = FALSE}
 treatment <- q4_comp$churned
 outcome <- q4_comp$months_active
 
@@ -263,55 +313,126 @@ permutation.test <- function(treatment, outcome, n){
   distribution=c()
   result=0
   for(i in 1:n){
-    distribution[i]=diff(by(outcome, sample(treatment, length(treatment), FALSE), mean))
+    distribution[i]=diff(by(outcome, 
+                            sample(treatment, length(treatment), FALSE),
+                            mean))
   }
   result=sum(abs(distribution) >= abs(original))/(n)
   return(list(result, distribution))
 }
 
 test1 <- permutation.test(treatment, outcome, 10000)
-hist(test1[[2]], breaks=50, col='grey', main="Permutation Distribution", las=1, xlab='')
+hist(test1[[2]], breaks=50, col='grey',
+     main="Permutation Distribution", 
+     las=1, xlab='')
 abline(v=original, lwd=3, col="red")
 
 test1[[1]]
 
 
 #Compare to t-test
-t.test(outcome~treatment)
+t.test(outcome~treatment) 
+  
 ```
 
-The outcome of the analysis shows that the p value is extremely small which is statistically significant. It points out the strong evidence against the null hypothesis. Therefore, the churn rate is significantly different between these two company sizes. Additionally, for the permutation distribution, we can figure out from the graph above that it is normally distributed with the mean of 0.
++ The outcome of the analysis shows that the p value is extremely small which is statistically significant. It points out the strong evidence against the null hypothesis. Therefore, the churn rate is significantly different between these two company sizes. 
+
++ Additionally, for the permutation distribution, we can figure out from the graph above that it is normally distributed with the mean of 0.
 
 # Question 5
 
 ## fit a Weibull distribution to the survival data to estimate the mean and the median of the churn time for each company size
 
-```{r}
+```{r, message = FALSE, warning = FALSE}
 function_fit <- function(dat){
-  fit <- survreg(Surv(months_active, churned) ~ 1, data = dat, dist = "weibull" )
+  fit <- survreg(Surv(months_active, churned) ~ 1, 
+                 data = dat,
+                 dist = "weibull" )
   rweibull_shape <- 1 / fit$scale ## Approximately 3
   rweibull_scale <- exp(coef(fit)) ## approximately 7
 
 median <- rweibull_scale*log(2)^(1/rweibull_shape)
 mean <- rweibull_scale*gamma(1+(1/rweibull_shape))
 
-return(c(median, mean))
+return(c(rweibull_shape, rweibull_scale, median, mean))
   
 }
 ```
 
-```{r}
-weibull <- data_frame(company_size = character(), median = double(), mean = double())
+```{r, message = FALSE, warning = FALSE}
+weibull <- data_frame(company_size = character(),
+                      shape = double(),
+                      scale = double(),
+                      median = double(),
+                      mean = double(),
+                      size = double())
 for (size in unique(churn_dat$company_size)){
   temp_data <- churn_dat %>% filter(company_size == size)
-  return_values <- fit_q5(temp_data)
-  weibull <- rbind(weibull, c(size, round(return_values[1], 2), round(return_values[2],2)))
+  return_values <- function_fit(temp_data)
+  weibull <- rbind(weibull,
+                   c(size, 
+                     round(return_values[1],2), 
+                     round(return_values[2],2),
+                     round(return_values[3], 2),
+                     round(return_values[4],2),
+                     nrow(temp_data)))
 }
 
-names(weibull) <- c("company_size", "median", "mean")
+names(weibull) <- c("company_size", "shape", "scale", "median", "mean", "data_size")
 
-kable(weibull, caption = "Estimated mean and the median of the churn time for each company size with Weibull distribution") %>% 
-  kable_styling(c("hover", "striped"))
+kable(weibull, 
+caption = "Estimated mean and the median of
+      the churn time for each company size with Weibull distribution") %>% 
+  kable_styling(c("hover", "striped"))%>%
+  row_spec(1:5, color = "black", background = "#e6f0ed") 
 ```
 
+<<<<<<< HEAD
+=======
+
+```{r, message = FALSE, warning = FALSE}
+parametric_bootstrap_mean <- function(shape, scale, mean, total_size){
+  bootstrap_simulation <- tibble(exp = rep(1:5000, each = total_size),
+                      ystar = rweibull(5000 * total_size, shape = shape, scale = scale))
+  bias <- bootstrap_simulation %>%
+    group_by(exp) %>%
+    summarise(delta = mean - mean(ystar))
+  conf_int <- mean + quantile(bias$delta, c(0.05, 0.95))
+  return(conf_int)
+}
+
+parametric_bootstrap_median <- function(shape, scale, median, total_size){
+  bootstrap_simulation <- tibble(exp = rep(1:5000, each = total_size),
+                      ystar = rweibull(5000 * total_size, shape = shape, scale = scale))
+  bias <- bootstrap_simulation %>%
+    group_by(exp) %>%
+    summarise(delta = median - median(ystar))
+  conf_int <- median + quantile(bias$delta, c(0.05, 0.95))
+  return(conf_int)
+}
+```
+
+```{r, message = FALSE, warning = FALSE}
+weibull_ci <- data_frame (company_size = character(), type = character(), upper_ci  = numeric(), lower_ci = numeric())
+for (i in 1:nrow(weibull)){
+  result_mean <- parametric_bootstrap_mean(as.numeric(weibull$shape[i]), as.numeric(weibull$scale[i]), as.numeric(weibull$mean[i]), as.numeric(weibull$data_size[i]))
+
+  result_median <- parametric_bootstrap_median(as.numeric(weibull$shape[i]), as.numeric(weibull$scale[i]), as.numeric(weibull$median[i]), as.numeric(weibull$data_size[i]))
+
+  weibull_ci <- rbind(weibull_ci, c(weibull$company_size[i], "mean", result_mean[2], result_mean[1]))
+  weibull_ci <- rbind(weibull_ci, c(weibull$company_size[i], "median", result_median[2], result_median[1]))
+}
+  
+names(weibull_ci) <- c("Company Size", "Type", "Upper CI", "Lower CI")
+
+kable(weibull_ci, 
+caption = "Estimated mean and the median confidence intervals for weibull distribution") %>% 
+  kable_styling(c("hover", "striped")) 
+
+```
+>>>>>>> 097c9380fae08c9481ccd858e99dca2641a4d09d
+
++ The mean and median estimates derived from the weibull distribution are different from the estimates obtained using the Kaplan-Meier model. There is a increase by 0.5 to 1 in the values produced in this model, whereas the values given by the Kaplan-Meier model are lower.
+
++ Therefore, parametric estimators are to be given more consideration when compared to non-parametric, Kaplan eier estimations. Also, we find that the reduction in efficiency of the Kaplan–Meier survival estimate becomes negligible quickly as the number of parameters in the parametric model increases.
 
