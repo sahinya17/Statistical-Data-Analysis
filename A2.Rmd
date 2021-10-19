@@ -1,8 +1,11 @@
 ---
 title: "Statistical Thinking Assignment 2"
-author: "Xinyi Cui, Janice Hsin Hsu, Pranali Angne, Sahinya Akila"
+author: Xinyi Cui (29645530), Janice Hsin Hsu (32195109), Pranali Angne (32355068),
+  Sahinya Akila (29201128)
 date: "10/17/2021"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 \newpage
@@ -360,6 +363,7 @@ ggplot(nmr_train)+
   xlab("Neonatal Mortality Rate in Log Scale") +
   ggtitle("Region vs transformed_nmr")
 ```
+
 We first look for the variables with non-linear relationship. The first graph is u5mr_log and transformed_nmr, the second graph is time and transformed_nmr, the third is region and transformed_nmr, and it appears that only u5mr_log and transformed_nmr has non-linear relationship. We then fit a model with u5mr_log, u5mr_log\*region and u5mr_log*time.
 
 ### Task 1.2.2: Use cross-validation to select an appropriate number of basis functions for bs()
@@ -537,7 +541,7 @@ non_linear_prediction %>%
   ylab("Neonatal mortality rate")
 ```
 
-## Conclusion 1: 
+## Conclusion for Task 1: 
 
 The first model is the linear regression model and second is the non-linear regression model. The MAE and the RMSE are significant, which means the errors of the predicted model cannot be ignored. The non-linear model is more appropriate model to explain the data. However, the R-squared value of the linear model and the non-linear model do not show much difference indicating that the transformed_nmr, u5mr_log, region and time variables are not highly dependent on each other. From the graph of the model and qq plots, especially from for each region and the three different countries, non-linear model have better fit over the linear model. 
 
@@ -711,7 +715,9 @@ coverage %>%
   kable_styling(position = "center")
 ```
 
-The modified residual bootstrap does not achieve the nominal coverage.  
+## Conclusion for Task 2: 
+
+From the coverage table we can see that the modified residual bootstrap does not achieve the nominal coverage. 
 
 
 
