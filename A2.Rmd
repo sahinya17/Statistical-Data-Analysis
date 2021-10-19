@@ -516,27 +516,38 @@ non_linear_prediction %>%
 #  Prediction for region
 non_linear_prediction %>%
   ggplot(aes(x = u5mr_log, y = nmr))+
-  geom_point()+
-  geom_line(aes(y = lwr)) +
-  geom_line(aes(y = upr))+
-  facet_wrap(~ region, scale = "free")
+  geom_point(color = "#287ad1")+
+  geom_line(aes(y = lwr), color = "#d12828") +
+  geom_line(aes(y = upr), color = "#d12828")+
+  facet_wrap(~ region, scale = "free")+
+  theme(panel.background = element_rect(fill = "#fff6ba")) +
+  xlab("Under 5 mortality rate in Log scale") +
+  ylab("Neonatal mortality rate")
 
 #  Prediction for 3 Countires
  non_linear_prediction %>%
   filter(country_name %in% c("India", "Japan", "Australia")) %>% 
   ggplot(aes(x = u5mr_log, y = nmr))+
-  geom_point()+
-  geom_line(aes(y = lwr)) +
-  geom_line(aes(y = upr))+
-  facet_wrap(~ country_name, scale = "free")
+  geom_point(color = "#287ad1")+
+  geom_line(aes(y = lwr), color = "#d12828") +
+  geom_line(aes(y = upr), color = "#d12828")+
+  facet_wrap(~ country_name, scale = "free")+
+  theme(panel.background = element_rect(fill = "#fff6ba")) +
+  xlab("Under 5 mortality rate in Log scale") +
+  ylab("Neonatal mortality rate")
 ```
 
+## Conclusion 1: 
 
-Q3
+The first model is the linear regression model and second is the non-linear regression model. The MAE and the RMSE are significant, which means the errors of the predicted model cannot be ignored. The non-linear model is more appropriate model to explain the data. However, the R-squared value of the linear model and the non-linear model do not show much difference indicating that the transformed_nmr, u5mr_log, region and time variables are not highly dependent on each other. From the graph of the model and qq plots, especially from for each region and the three different countries, non-linear model have better fit over the linear model. 
 
-Introduction:
+
+# Task 2: The residual bootstrap
+
+## Introduction:
 
 In this section we wrote a function that uses the residual bootstrap to compute an 80% confidence interval for the LASSO estimate for each regression parameters also check the coverage of each of the intervals.
+
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
 #data
 set.seed(123)
@@ -554,6 +565,7 @@ formula <- reformulate(variables, response = "y")
 
 ```
 
+## Write a function that uses a residual bootstrap to compute an 80% confidence interval for the LASSO estimate for each regression parameters. 
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
 # write the function
 library(glmnet)
@@ -661,42 +673,49 @@ ci <- bias %>%
   group_by(term) %>% 
   summarise(lwr = estimate +quantile(delta, 0.1),
             upr = estimate +quantile(delta, 0.9)) %>% 
-  unique() %>% 
-  knitr::kable(digits = 5)
+  unique()
 
 return(ci)
 }
+
 ```
 
+
+## This is an outcome of the sample data of 80% confidence interval  for the LASSO estimate
+```{r}
+# This is an outcome of the sample data of 80% confidence interval  for the LASSO estimate
+lasso(data, formula, n, n_sim) %>%
+  kbl(booktabs = T,
+      caption = "80% confidence interval for Lasso") %>%
+  kable_styling(position = "center")
+```
+
+
+## Write a function that checks the coverage of each of these intervals and Comment on whether or not the (modified) residual bootstrap achieves the nominal coverage
 ```{r}
 #check coverage
-
-coverage <- function(data, formula, n, n_sim,ci){
+coverage <- function(){
   spec_lasso_tune <- linear_reg(penalty = tune(), mixture = 1) %>% 
   set_engine("glmnet")
   
   lambda <- grid_regular(penalty(range = c(-10,10)),
                          levels = 10)
   
-  return(lambda)
-  
+  return(lambda) 
 }
 ```
 
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
-lasso(data, formula, n, n_sim) %>% tidy() %>% 
-  kbl(booktabs = T,
-      caption = "80% confidence interval for Lasso") %>%
-  kable_styling(position = "center")
-
-coverage(data, formula, n, n_sim, ci) %>% 
+coverage() %>%
   kbl(booktabs = T,
       caption = "Coverage check for each interval") %>%
   kable_styling(position = "center")
 ```
 
 The modified residual bootstrap does not achieve the nominal coverage.  
+
+
 
 
 
