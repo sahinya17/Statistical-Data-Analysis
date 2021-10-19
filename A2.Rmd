@@ -150,7 +150,7 @@ The dag graph illustrates The information about the relationship we get from the
 ```{r, fig.width=8}
 augment_fit <- fit %>% 
   augment(data = nmr_train)
-# part a
+# Part a: For all data simultaneously
 augment_fit %>% 
   ggplot() +
   geom_point(aes(x = u5mr_log, y= transformed_nmr), color = "#1b9ce3")+
@@ -164,7 +164,7 @@ augment_fit %>%
 The fitted model fits fairly well with all the data simultaneously, as we can see from the graph that the fitted model and the actual data mostly overlap with each other.  
 
 ```{r, fig.width=20, fig.height=15}
-# part b
+# Part b: For data in each region
 augment_fit %>% 
   ggplot() +
   geom_point(aes(x = u5mr_log, y= transformed_nmr), color = "#7c9154")+
@@ -179,7 +179,7 @@ augment_fit %>%
 Similarly, the fitted model works well with data in each region as well, especially for high income countries and Latin America and Caribbean.
 
 ```{r}
-# part c
+# Part c: For data in a maximum of 3 countries that should be chosen to highlight different aspects of the fit diagnostics
 augment_fit %>%
   filter(country_name %in% c("India", "Japan", "Australia")) %>%
   ggplot(aes(x = u5mr_log, y = transformed_nmr)) +
@@ -213,12 +213,14 @@ According to Cornell Statistical Consulting Unit, RMSE is the square root of the
 ### Task 1.1.4: Produce a prediction, with prediction intervals, of the NMR on its natural scale (aka not on the log-scale) and plot these a) for all data simultaneously; b) for data in each region; and c) for data in a maximum of 3 countries that show different aspects of the fit.
 
 ```{r}
+
+fit_natural <- lm(nmr ~ u5mr_log + u5mr_log*region + u5mr_log*time, nmr_train)
 # Prediction for all data simultaneously
-linear_prediction  <- as_tibble(predict(fit, nmr_test, interval = "prediction")) %>% 
+linear_prediction  <- as_tibble(predict(fit_natural, nmr_test, interval = "prediction")) %>% 
   bind_cols(lm_pred)
 
 linear_prediction  %>% 
-  ggplot(aes(x = u5mr_log, y = transformed_nmr))+
+  ggplot(aes(x = u5mr_log, y = nmr))+
   geom_point(color = "#287ad1")+
   geom_line(aes(y = lwr), color = "#d12828")+
   geom_line(aes(y = upr), color = "#d12828") +
@@ -228,20 +230,26 @@ linear_prediction  %>%
 
 #  Prediction for region
 linear_prediction %>%
-  ggplot(aes(x = u5mr_log, y = transformed_nmr))+
-  geom_point()+
-  geom_line(aes(y = lwr)) +
-  geom_line(aes(y = upr))+
-  facet_wrap(~ region, scale = "free")
+  ggplot(aes(x = u5mr_log, y = nmr))+
+  geom_point(color = "#287ad1")+
+  geom_line(aes(y = lwr),color = "#d12828") +
+  geom_line(aes(y = upr),color = "#d12828")+
+  facet_wrap(~ region, scale = "free")+
+  theme(panel.background = element_rect(fill = "#fff6ba")) +
+  xlab("Under 5 mortality rate in Log scale") +
+  ylab("Neonatal mortality rate")
 
 #  Prediction for 3 Countires
  linear_prediction %>%
   filter(country_name %in% c("India", "Japan", "Australia")) %>% 
-  ggplot(aes(x = u5mr_log, y = transformed_nmr))+
-  geom_point()+
-  geom_line(aes(y = lwr)) +
-  geom_line(aes(y = upr))+
-  facet_wrap(~ country_name, scale = "free")
+  ggplot(aes(x = u5mr_log, y = nmr))+
+  geom_point(color = "#287ad1")+
+  geom_line(aes(y = lwr), color = "#d12828") +
+  geom_line(aes(y = upr), color = "#d12828")+
+  facet_wrap(~ country_name, scale = "free")+
+  theme(panel.background = element_rect(fill = "#fff6ba")) +
+  xlab("Under 5 mortality rate in Log scale") +
+  ylab("Neonatal mortality rate")
 ```
 
 ## Task 1.2: Non-linear Regression
@@ -342,12 +350,14 @@ lm_pred %>%
 ### Task 1.2.5: Produce a prediction, with prediction intervals8, of the NMR on its natural scale (aka not on the log-scale) and plot these a) for all data simultaneously; b) for data in each region; and c) for data in a maximum of 3 countries that show different aspects of the fit.
 
 ```{r}
+
+fit_non_linear_natural <- lm(nmr ~ bs(u5mr_log, df= 15) + u5mr_log*region + u5mr_log*time, data = nmr_train)
 # Prediction for all data simultaneously
-non_linear_prediction <- as_tibble(predict(fit_non_linear, nmr_test, interval = "prediction")) %>% 
+non_linear_prediction <- as_tibble(predict(fit_non_linear_natural, nmr_test, interval = "prediction")) %>% 
   bind_cols(lm_pred)
 
 non_linear_prediction %>% 
-  ggplot(aes(x = u5mr_log, y = transformed_nmr))+
+  ggplot(aes(x = u5mr_log, y = nmr))+
   geom_point(color = "#287ad1")+
   geom_line(aes(y = lwr), color = "#d12828")+
   geom_line(aes(y = upr), color = "#d12828") +
@@ -357,7 +367,7 @@ non_linear_prediction %>%
 
 #  Prediction for region
 non_linear_prediction %>%
-  ggplot(aes(x = u5mr_log, y = transformed_nmr))+
+  ggplot(aes(x = u5mr_log, y = nmr))+
   geom_point()+
   geom_line(aes(y = lwr)) +
   geom_line(aes(y = upr))+
@@ -366,7 +376,7 @@ non_linear_prediction %>%
 #  Prediction for 3 Countires
  non_linear_prediction %>%
   filter(country_name %in% c("India", "Japan", "Australia")) %>% 
-  ggplot(aes(x = u5mr_log, y = transformed_nmr))+
+  ggplot(aes(x = u5mr_log, y = nmr))+
   geom_point()+
   geom_line(aes(y = lwr)) +
   geom_line(aes(y = upr))+
