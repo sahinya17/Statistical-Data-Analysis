@@ -675,7 +675,13 @@ ci <- bias %>%
             upr = estimate +quantile(delta, 0.9)) %>% 
   unique()
 
-return(ci)
+coverage <- bias %>% 
+  left_join(ci, by = "term") %>% 
+  mutate(covered = ifelse(bootstrap_estimate > lwr  & bootstrap_estimate < upr, 1,0)) %>% 
+  group_by(term) %>% 
+  summarise(coverage = mean(covered))
+
+return(list(ci, coverage))
 }
 
 ```
@@ -684,7 +690,12 @@ return(ci)
 ## This is an outcome of the sample data of 80% confidence interval  for the LASSO estimate
 ```{r}
 # This is an outcome of the sample data of 80% confidence interval  for the LASSO estimate
-lasso(data, formula, n, n_sim) %>%
+alist <- lasso(data, formula, n, n_sim) 
+
+ci <- alist[1]
+coverage <- alist[2]
+
+ci %>%
   kbl(booktabs = T,
       caption = "80% confidence interval for Lasso") %>%
   kable_styling(position = "center")
@@ -692,22 +703,9 @@ lasso(data, formula, n, n_sim) %>%
 
 
 ## Write a function that checks the coverage of each of these intervals and Comment on whether or not the (modified) residual bootstrap achieves the nominal coverage
+
 ```{r}
-#check coverage
-coverage <- function(){
-  spec_lasso_tune <- linear_reg(penalty = tune(), mixture = 1) %>% 
-  set_engine("glmnet")
-  
-  lambda <- grid_regular(penalty(range = c(-10,10)),
-                         levels = 10)
-  
-  return(lambda) 
-}
-```
-
-
-```{r echo = TRUE, message = FALSE, warning = FALSE}
-coverage() %>%
+coverage %>%
   kbl(booktabs = T,
       caption = "Coverage check for each interval") %>%
   kable_styling(position = "center")
