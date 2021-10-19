@@ -161,7 +161,7 @@ augment_fit %>%
   
 ```
 
-The fitted model fits fairly well with all the data simultaneously, as we can see from the graph that the fitted model and the actual data mostly overlap with each other. Similarly, the fitted model works well with data in each region as well, especially for high income countries and Latin America and Caribbean. However, the fitted model does not work well with the countries Australia, India and Japan which we chose for highlight different aspects for the fit. The model only catches the trend in India. For more detailed fit diagnostics, we will assess the model based on the root mean square and the mean absolute error.
+The fitted model fits fairly well with all the data simultaneously, as we can see from the graph that the fitted model and the actual data mostly overlap with each other.  
 
 ```{r, fig.width=20, fig.height=15}
 # part b
@@ -175,6 +175,8 @@ augment_fit %>%
   ylab("Neonatal Mortality Rate in Log Scale")
 ```
 
+
+Similarly, the fitted model works well with data in each region as well, especially for high income countries and Latin America and Caribbean.
 
 ```{r}
 # part c
@@ -204,6 +206,9 @@ lm_pred %>%
   kbl(booktabs = T) %>%
   kable_styling(position = "center")
 ```
+
+According to Cornell Statistical Consulting Unit, RMSE is the square root of the variance of the residuals, and “It indicates the absolute fit of the model to the data—how close the observed data points are to the model’s predicted values. (Grace-Martin, 2020)
+“ ,  and the lower value of RMSE indicates the better fit of the model which the value we have here is 0.4122092, meaning the difference between predicted value and the observed value is a bit less than 50%. Moreover,  the r-squared is 0.5986680, it means that the predicted model explains about 60% of the observed model. Additionally, MAE which stands for mean absolute error measures the average magnitude of the errors in a set of predictions, mae equals 0.3041219 meaning the errors between prediction and actual observations are about 30%.
 
 ### Task 1.1.4: Produce a prediction, with prediction intervals, of the NMR on its natural scale (aka not on the log-scale) and plot these a) for all data simultaneously; b) for data in each region; and c) for data in a maximum of 3 countries that show different aspects of the fit.
 
