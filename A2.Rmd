@@ -2,7 +2,7 @@
 title: "Statistical Thinking Assignment 2"
 author: "Xinyi Cui, Janice Hsin Hsu, Pranali Angne, Sahinya Akila"
 date: "10/17/2021"
-output: pdf_document
+output: html_document
 ---
 
 \newpage
@@ -11,7 +11,7 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 # Loading Libraries
 
 library(printr)
@@ -46,7 +46,7 @@ It contains the following columns:
 - `nmr_transformed`: log of the number of neonatal deaths per 1000 live births divided by the number of non-neonantal deaths per 1000 live births. 
 
 $$log(\frac{nmr}{u5mr - nmr})$$
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 # Reading the data
 neonatal_mortality <- read_csv("neonatal_mortality.csv")
 
@@ -61,7 +61,7 @@ nmr_data <- neonatal_mortality %>%
 
 ### Task 1.1.1: Explain the choice of variables in your model (you should not use country_name, if you use U5MR, you should use it on the log-scale!). In particular you should consider whether an interaction effect should be used.
 
-```{r variable-choice, fig.width=20, fig.height=15}
+```{r echo = TRUE, message = FALSE, warning = FALSE, variable-choice, fig.width=20, fig.height=15}
 
 # Splitting the data
 nmr_split <- initial_split(nmr_data, strata = region)
@@ -125,7 +125,7 @@ For u5mr_time model, as we mentioned before, u5mr itself is significant, while a
 
 
 
-```{r, fig.width=5, fig.height=5}
+```{r, echo = TRUE, message = FALSE, warning = FALSE, fig.width=5, fig.height=5}
 
 # understanding relationship between the variables
 dagify(nmr ~ u5mr,
@@ -147,7 +147,7 @@ The dag graph illustrates The information about the relationship we get from the
 
 ### Task 1.1.2: Assess your linear model and comment on its fit. This should be done a) for all data simultaneously; b)for data in each region; and c) for data in a maximum of 3 countries that should be chosen to highlight different aspects of the fit diagnostics.
 
-```{r, fig.width=8}
+```{r, echo = TRUE, message = FALSE, warning = FALSE, fig.width=8}
 augment_fit <- fit %>% 
   augment(data = nmr_train)
 # Part a: For all data simultaneously
@@ -163,7 +163,7 @@ augment_fit %>%
 
 The fitted model fits fairly well with all the data simultaneously, as we can see from the graph that the fitted model and the actual data mostly overlap with each other.  
 
-```{r, fig.width=20, fig.height=15}
+```{r, echo = TRUE, message = FALSE, warning = FALSE, fig.width=20, fig.height=15}
 # Part b: For data in each region
 augment_fit %>% 
   ggplot() +
@@ -178,7 +178,7 @@ augment_fit %>%
 
 Similarly, the fitted model works well with data in each region as well, especially for high income countries and Latin America and Caribbean.
 
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 # Part c: For data in a maximum of 3 countries that should be chosen to highlight different aspects of the fit diagnostics
 augment_fit %>%
   filter(country_name %in% c("India", "Japan", "Australia")) %>%
@@ -195,7 +195,7 @@ We choose India, Australia and Japan to highlight different aspects of the fit. 
 
 ### Task 1.1.3: Estimate the root mean square error and the mean absolute error on a test set. The test set should be produced using the argument strata = region.
 
-```{r, fig.align='center'}
+```{r, echo = TRUE, message = FALSE, warning = FALSE, fig.align='center'}
 
 # Predict the test dataset
 lm_pred <- tibble(pred = predict(fit, nmr_test))
@@ -212,7 +212,7 @@ According to Cornell Statistical Consulting Unit, RMSE is the square root of the
 
 ### Task 1.1.4: Produce a prediction, with prediction intervals, of the NMR on its natural scale (aka not on the log-scale) and plot these a) for all data simultaneously; b) for data in each region; and c) for data in a maximum of 3 countries that show different aspects of the fit.
 
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 
 fit_natural <- lm(nmr ~ u5mr_log + u5mr_log*region + u5mr_log*time, nmr_train)
 # Prediction for all data simultaneously
@@ -266,7 +266,7 @@ As for the countries, Australia, India and Japan, putting upper and lower scales
 
 ### Task 1.2.1: Explain your choice of model, using appropriate visualisations to support your choice. 
 
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 #non-linear variable
 
 #non-linear variable part1 choose variable
@@ -304,10 +304,8 @@ We first look for the variables with non-linear relationship. The first graph is
 
 We use folds to split the data into groups.
 
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 folds <- vfold_cv(nmr_data , v = 20, strata = region)
-folds
-head(folds$splits[[1]]$data)
 ```
 
 Build the bs recipe.
@@ -315,7 +313,7 @@ Build the bs recipe.
          transformed_nmr = log(nmr/(u5mr-nmr)),
          time = year - min(year))
 
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 bs_recipe <- recipe(transformed_nmr ~ u5mr_log + region + time,
               data = nmr_train) %>% 
   step_bs(u5mr_log, deg_free = tune()) %>% 
@@ -325,21 +323,21 @@ bs_recipe <- recipe(transformed_nmr ~ u5mr_log + region + time,
 
 Add the data recipe to the workflow.
 
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 wf_bs <- workflow() %>%
   add_recipe(bs_recipe)
 ```
 
 Set up a spec to find the value of $\lambda$ with the smallest average RMSE on the cross validation folds.
 
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 spec <- linear_reg() %>%
   set_engine("lm")
 ```
 
 Tune our model to find a good value of $\lambda$.
 
-```{r, warning = FALSE}
+```{r, echo = TRUE, message = FALSE, warning = FALSE, warning = FALSE}
 wf_lm <- wf_bs %>% 
   add_model(spec) 
 
@@ -350,7 +348,7 @@ fit_lm <- wf_lm %>%
 
 Collect metrics and put them to visualize:
 
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 fit_lm %>% collect_metrics() %>% 
   ggplot(aes(x = deg_free, y = mean, 
              colour = .metric)) +
@@ -363,7 +361,7 @@ fit_lm %>% collect_metrics() %>%
   theme(legend.position = "none")
 ```
 
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 lowest_rmse <- fit_lm %>% 
   select_best("rmse")
 lowest_rmse
@@ -375,7 +373,7 @@ Lowest RMSE is `r lowest_rmse`.
 
 
 ### Task 1.2.3: For your final model, assess your linear model and comment on its fit. This should be done a) for all data simultaneously; b) for data in each region; and c) for data in a maximum of 3 countries that should be chosen to highlight different aspects of the fit diagnostics.
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 # non-linear all
 augment_non_linear <- fit_non_linear %>% 
   augment(data = nmr_train) 
@@ -416,7 +414,7 @@ The non-linear model apparently fits better than the linear model for Australia,
 
 ### Task 1.2.4: Estimate the root mean square error and the mean absolute error using the same test set as before.
 
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 # Predict the test dataset
 lm_pred <- tibble(pred = predict(fit_non_linear, nmr_test))
 lm_pred <- bind_cols(nmr_test, lm_pred)
@@ -430,7 +428,7 @@ lm_pred %>%
 
 ### Task 1.2.5: Produce a prediction, with prediction intervals8, of the NMR on its natural scale (aka not on the log-scale) and plot these a) for all data simultaneously; b) for data in each region; and c) for data in a maximum of 3 countries that show different aspects of the fit.
 
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 
 fit_non_linear_natural <- lm(nmr ~ bs(u5mr_log, df= 15) + u5mr_log*region + u5mr_log*time, data = nmr_train)
 # Prediction for all data simultaneously
@@ -466,7 +464,7 @@ non_linear_prediction %>%
 
 
 Q3
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 #data
 set.seed(123)
 
@@ -483,7 +481,7 @@ formula <- reformulate(variables, response = "y")
 
 ```
 
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 # write the function
 library(glmnet)
 
@@ -597,7 +595,7 @@ return(ci)
 }
 ```
 
-```{r}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 lasso(data, formula, n, n_sim)
 ```
 
