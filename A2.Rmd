@@ -292,9 +292,73 @@ fit_non_linear <- lm(transformed_nmr ~ bs(u5mr_log, df= 15) + u5mr_log*region + 
 
 ### Task 1.2.2: Use cross-validation to select an appropriate number of basis functions for bs()
 
+We use folds to split the data into groups.
+
 ```{r}
-#NOT DONE
+folds <- vfold_cv(A2, v = 20, strata = region)
+folds
+head(folds$splits[[1]]$data)
 ```
+
+Build the bs recipe.
+
+
+```{r}
+nm_rec <- recipe(logr ~ logu5 + region + t,
+              data = A2_training) %>% 
+  step_bs(logu5, deg_free = tune()) %>% 
+  step_dummy(region) %>% 
+  step_interact(~starts_with("logu5"):starts_with("region"))
+```
+
+Add the data recipe to the workflow.
+
+```{r}
+wf_nm <- workflow() %>%
+  add_recipe(nm_rec)
+wf_nm
+```
+
+Set up a spec to find the value of $\lambda$ with the smallest average RMSE on the cross validation folds.
+
+```{r}
+spec <- linear_reg() %>%
+  set_engine("lm")
+```
+
+Tune our model to find a good value of $\lambda$.
+
+```{r, warning = FALSE}
+wf_lm <- wf_nm %>% 
+  add_model(spec) 
+
+fit_lm <- wf_lm %>%
+  tune_grid(resamples = folds
+)
+```
+
+Collect metrics and put them to visualize:
+
+```{r}
+fit_lm %>% collect_metrics() %>% 
+  ggplot(aes(x = deg_free, y = mean, 
+             colour = .metric)) +
+  geom_errorbar(aes(ymin = mean - std_err, 
+                    ymax = mean + std_err), 
+                alpha = 0.5) +
+  geom_line() +
+  facet_wrap(~.metric, scales = "free", nrow = 2) +
+  scale_x_log10() +
+  theme(legend.position = "none")
+```
+
+```{r}
+lowest_rmse <- fit_lm %>% 
+  select_best("rmse")
+lowest_rmse
+```
+Lowest RMSE is `r lowest_rmse`.
+
 
 
 
@@ -383,6 +447,145 @@ non_linear_prediction %>%
   facet_wrap(~ country_name, scale = "free")
 ```
 
+
+Q3
+```{r}
+#data
+set.seed(123)
+
+p <- 14
+n <- 10000
+n_sim <- 10
+
+data <- matrix(rnorm(n*p), nrow = n, ncol = p) %>% 
+  as_tibble() %>% 
+  mutate(y =V1+2*V2-3*V3+V4+rnorm(n, sd = 0.4))
+
+variables <- paste0("V", 1:14)
+formula <- reformulate(variables, response = "y")
+
+```
+
+```{r}
+# write the function
+library(glmnet)
+
+lasso<- function(data, formula, n, n_sim){
+  
+# model with tune to find a good value of the penalty parameter
+  spec_lasso_tune <- linear_reg(penalty = tune(), mixture = 1) %>% 
+    set_engine("glmnet")
+  
+  lambda_grid <- grid_regular(penalty(range = c(-5,5)), levels = 10) 
+  
+#cross validation
+  folds <- vfold_cv(data, v = 10) 
+
+#workflow
+  rec <- recipe(formula, data = data)
+
+  lasso_wf <- workflow() %>% 
+    add_recipe(rec) %>% 
+    add_model(spec_lasso_tune)
+
+  lasso_wf_tune <- lasso_wf %>% 
+    tune_grid(resamples = folds,
+              grid = lambda_grid)
+
+#choose smallest mse 
+  smallest_rmse <- lasso_wf_tune %>% 
+    select_best("rmse")
+
+#update lasso
+  final_lasso <- finalize_workflow(lasso_wf, smallest_rmse)
+
+  fit_lasso <- final_lasso %>% 
+    fit(data)
+
+#Find intercept from v1 to v14 and predict estimate penality
+  fit_beta <- final_lasso %>% 
+    fit(data) %>% 
+    tidy()
+
+# compute residual (real - pred value)
+  pred_value <- data %>% 
+    bind_cols(predict(fit_lasso, data))
+
+  residuals <- pred_value %>% 
+    summarise(resid = y - .pred)
+
+#Normalize the residuals
+  normalized_residuals <- residuals %>% 
+    summarise(normalized_resid = resid - mean(resid))
+
+#Re-sample the residuals with replacement to create non-parametric bootstrap data
+  np_bs <- tibble(experiment = rep(1:n_sim, each = n),
+                  index = sample(1:n, size = n*n_sim, replace = TRUE),
+                  resid_star = normalized_residuals$normalized_resid[index],
+                  pred_value[index,]) %>%  # corresponding predict y value
+  mutate(y_hat = .pred + resid_star)
+
+update_rec <- recipe(y_hat ~ ., data = np_bs[,-1])
+
+experiment <-  np_bs %>% 
+  group_by(experiment) %>% 
+  nest()
+
+fit_list <- list()
+
+#Fit the LASSO to the bootstrap data
+  for (i in 1:dim(experiment)[1]){
+    
+    #workflow
+    updatde_lasso_wf <- workflow() %>% 
+    add_recipe(update_rec) %>% 
+    add_model(spec_lasso_tune)
+
+    folds <- vfold_cv(experiment$data[[i]], v= 10)
+  
+    lasso_wf_tune <- updatde_lasso_wf%>% 
+    tune_grid(resamples = folds,
+            grid = lambda_grid)
+  
+    smallest_rmse <- lasso_wf_tune %>% 
+    select_best("rmse")
+
+  update_final_lasso <- finalize_workflow(updatde_lasso_wf, smallest_rmse)
+
+  fit_list[[i]] <- update_final_lasso %>% 
+    fit(data = experiment$data[[i]]) %>% 
+    tidy() %>% 
+    mutate(exp = i)
+  }
+
+fit_beta_star <- bind_rows(fit_list) %>% 
+  rename(bootstrap_estimate = estimate)
+
+#Compute the bias
+bias <- fit_beta_star %>% 
+  group_by(exp) %>% 
+  mutate(delta = fit_beta$estimate - bootstrap_estimate) %>% 
+  left_join(fit_beta, by = "term") 
+
+
+#confidence interval
+ci <- bias %>% 
+  group_by(term) %>% 
+  summarise(lwr = estimate +quantile(delta, 0.1),
+            upr = estimate +quantile(delta, 0.9)) %>% 
+  unique() %>% 
+  knitr::kable(digits = 5)
+
+return(ci)
+}
+```
+
+```{r}
+lasso(data, formula, n, n_sim)
+```
+
+
+The modified residual bootstrap do not achieve the nominal coverage.
 
 
 
