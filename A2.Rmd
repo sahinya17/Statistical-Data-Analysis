@@ -309,9 +309,6 @@ folds <- vfold_cv(nmr_data , v = 20, strata = region)
 ```
 
 Build the bs recipe.
- mutate(u5mr_log = log(u5mr), 
-         transformed_nmr = log(nmr/(u5mr-nmr)),
-         time = year - min(year))
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
 bs_recipe <- recipe(transformed_nmr ~ u5mr_log + region + time,
@@ -364,13 +361,9 @@ fit_lm %>% collect_metrics() %>%
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
 lowest_rmse <- fit_lm %>% 
   select_best("rmse")
-lowest_rmse
+
+lowest_rmse %>% knitr::kable()
 ```
-Lowest RMSE is `r lowest_rmse`.
-
-
-
-
 
 ### Task 1.2.3: For your final model, assess your linear model and comment on its fit. This should be done a) for all data simultaneously; b) for data in each region; and c) for data in a maximum of 3 countries that should be chosen to highlight different aspects of the fit diagnostics.
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
